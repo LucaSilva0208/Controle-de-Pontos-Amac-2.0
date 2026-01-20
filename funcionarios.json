@@ -1,0 +1,152 @@
+[
+    {
+        "nome": "Carlos Santos",
+        "cargo": "Auxiliar",
+        "matricula": "1001",
+        "status": "ativo"
+    },
+    {
+        "nome": "Juliana Alves",
+        "cargo": "Analista",
+        "matricula": "1002",
+        "status": "afastado"
+    },
+    {
+        "nome": "Fernanda Rocha",
+        "cargo": "Supervisor",
+        "matricula": "1003",
+        "status": "afastado"
+    },
+    {
+        "nome": "Camila Teixeira",
+        "cargo": "Coordenador",
+        "matricula": "1004",
+        "status": "ativo"
+    },
+    {
+        "nome": "Carlos Santos",
+        "cargo": "Assistente",
+        "matricula": "1005",
+        "status": "ativo"
+    },
+    {
+        "nome": "Carlos Santos",
+        "cargo": "Supervisor",
+        "matricula": "1006",
+        "status": "afastado"
+    },
+    {
+        "nome": "Maria Oliveira",
+        "cargo": "Gerente",
+        "matricula": "1007",
+        "status": "afastado"
+    },
+    {
+        "nome": "Patrícia Nogueira",
+        "cargo": "Assistente",
+        "matricula": "1008",
+        "status": "férias"
+    },
+    {
+        "nome": "Rafael Lima",
+        "cargo": "Supervisor",
+        "matricula": "1009",
+        "status": "afastado"
+    },
+    {
+        "nome": "Bruno Ribeiro",
+        "cargo": "Supervisor",
+        "matricula": "1010",
+        "status": "férias"
+    },
+    {
+        "nome": "Lucas Pereira",
+        "cargo": "Analista",
+        "matricula": "1011",
+        "status": "afastado"
+    },
+    {
+        "nome": "Camila Teixeira",
+        "cargo": "Auxiliar",
+        "matricula": "1012",
+        "status": "afastado"
+    },
+    {
+        "nome": "Maria Oliveira",
+        "cargo": "Gerente",
+        "matricula": "1013",
+        "status": "afastado"
+    },
+    {
+        "nome": "Rafael Lima",
+        "cargo": "Coordenador",
+        "matricula": "1014",
+        "status": "férias"
+    },
+    {
+        "nome": "João Silva",
+        "cargo": "Auxiliar",
+        "matricula": "1015",
+        "status": "ativo"
+    },
+    {
+        "nome": "Fernanda Rocha",
+        "cargo": "Analista",
+        "matricula": "1016",
+        "status": "ativo"
+    },
+    {
+        "nome": "Camila Teixeira",
+        "cargo": "Analista",
+        "matricula": "1017",
+        "status": "afastado"
+    },
+    {
+        "nome": "Bruno Ribeiro",
+        "cargo": "Supervisor",
+        "matricula": "1018",
+        "status": "afastado"
+    },
+    {
+        "nome": "Maria Oliveira",
+        "cargo": "Analista",
+        "matricula": "1019",
+        "status": "férias"
+    },
+    {
+        "nome": "Camila Teixeira",
+        "cargo": "Auxiliar",
+        "matricula": "1020",
+        "status": "férias"
+    },
+    {
+        "nome": "João Silva",
+        "cargo": "Gerente",
+        "matricula": "1021",
+        "status": "férias"
+    },
+    {
+        "nome": "Patrícia Nogueira",
+        "cargo": "Gerente",
+        "matricula": "1022",
+        "status": "férias"
+    },
+    {
+        "nome": "Juliana Alves",
+        "cargo": "Coordenador",
+        "matricula": "1023",
+        "status": "férias"
+    },
+    {
+        "nome": "Patrícia Nogueira",
+        "cargo": "Assistente",
+        "matricula": "1024",
+        "status": "afastado"
+    },
+    {
+        "nome": "João Silva",
+        "cargo": "Auxiliar",
+        "matricula": "1025",
+        "status": "férias"
+    }
+]
