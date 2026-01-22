@@ -3,11 +3,13 @@ from tkinter import messagebox
 from autenticacao import Autenticacao
 from tela_principal import TelaPrincipal
 
+
 class TelaLogin:
     def __init__(self, root):
         self.root = root
         self.root.title("Ponto Certo - Login")
         self.root.geometry("420x320")
+        self.root.resizable(False, False)
 
         self.auth = Autenticacao()
 
@@ -36,8 +38,15 @@ class TelaLogin:
         tk.Button(self.frame, text="Entrar", width=20, command=self.login).pack(pady=(20, 5))
         tk.Button(self.frame, text="Cancelar", width=20, command=root.destroy).pack()
 
+        # Foco inicial
+        self.user.focus()
+
     def login(self):
-        perfil = self.auth.validar(self.user.get(), self.senha.get())
+
+        usuario = self.user.get().strip()
+        senha = self.senha.get().strip()
+
+        perfil = self.auth.validar(usuario, senha)
         if perfil:
             # Remove a tela de login
             self.frame.destroy()
@@ -46,3 +55,6 @@ class TelaLogin:
             TelaPrincipal(self.root, perfil)
         else:
             messagebox.showerror("Erro", "Usuário ou senha inválidos")
+            self.user.delete(0, tk.END)
+            self.senha.delete(0, tk.END)
+            self.user.focus()

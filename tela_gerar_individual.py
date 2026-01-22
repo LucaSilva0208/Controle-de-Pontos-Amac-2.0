@@ -1,159 +1,63 @@
 import tkinter as tk
 from tkinter import messagebox
 import json
-from gerador_pdf import GeradorFolhaPDF
-
-ARQ_FUNC = "funcionarios.json"
+from gerador_folha import GeradorFolhaPonto
 
 
 class TelaGerarIndividual:
-    def __init__(self, master):
-        self.win = tk.Toplevel(master)
-        self.win.title("Gerar Folha Individual")
-        self.win.state("zoomed")
+    def __init__(self, parent, voltar_callback):
+        self.parent = parent
+        self.voltar = voltar_callback
+
+        self.frame = tk.Frame(parent, bg="#e5e7eb")
+        self.frame.pack(fill="both", expand=True)
 
         self.criar_layout()
         self.carregar_funcionarios()
 
     def criar_layout(self):
-        container = tk.Frame(self.win, bg="#f1f3f5")
-        container.pack(fill="both", expand=True)
+        tk.Label(self.frame, text="Gerar Folha Individual",
+                 font=("Segoe UI", 22, "bold"),
+                 bg="#e5e7eb").pack(pady=20)
 
-        # Topo
-        topo = tk.Frame(container, bg="#111827", height=60)
-        topo.pack(fill="x")
-        topo.pack_propagate(False)
+        self.func_var = tk.StringVar()
+        self.mes_var = tk.StringVar()
+        self.ano_var = tk.StringVar()
 
-        tk.Button(topo, text="⬅ Voltar ao Menu",
-                  command=self.win.destroy,
-                  bg="#111827", fg="white",
-                  bd=0, font=("Segoe UI", 12, "bold"),
-                  padx=15).pack(side="left", pady=10)
+        tk.Label(self.frame, text="Funcionário").pack()
+        self.combo = tk.OptionMenu(self.frame, self.func_var, "")
+        self.combo.pack()
 
-        tk.Label(topo, text="Gerar Folha Individual",
-                 fg="white", bg="#111827",
-                 font=("Segoe UI", 16, "bold")).pack(side="left", padx=20)
+        tk.Label(self.frame, text="Mês").pack()
+        tk.Entry(self.frame, textvariable=self.mes_var).pack()
 
-        # Conteúdo
-        conteudo = tk.Frame(container, bg="#e5e7eb")
-        conteudo.pack(fill="both", expand=True, padx=40, pady=30)
+        tk.Label(self.frame, text="Ano").pack()
+        tk.Entry(self.frame, textvariable=self.ano_var).pack()
 
-        # Busca e contador
-        frame_top = tk.Frame(conteudo, bg="#e5e7eb")
-        frame_top.pack(fill="x")
-
-        tk.Label(frame_top, text="Buscar por nome ou matrícula:",
-                 bg="#e5e7eb").pack(anchor="w")
-
-        self.var_busca = tk.StringVar()
-        self.var_busca.trace_add("write", self.filtrar)
-        tk.Entry(frame_top, textvariable=self.var_busca, width=45).pack(anchor="w", pady=5)
-
-        self.lbl_contador = tk.Label(frame_top, text="Selecionados: 0",
-        bg="#e5e7eb", fg="#374151",
-        font=("Segoe UI", 10, "bold"))
-        self.lbl_contador.pack(anchor="e")
-
-        # Lista de funcionários com scroll
-        frame_lista = tk.Frame(conteudo, bg="white")
-        frame_lista.pack(fill="both", expand=True, pady=10)
-
-        canvas = tk.Canvas(frame_lista, bg="white", highlightthickness=0)
-        scrollbar = tk.Scrollbar(frame_lista, orient="vertical", command=canvas.yview)
-        self.frame_itens = tk.Frame(canvas, bg="white")
-
-        self.frame_itens.bind("<Configure>",
-                              lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-
-        canvas.create_window((0, 0), window=self.frame_itens, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        # Botões
-        frame_botoes = tk.Frame(conteudo, bg="#e5e7eb")
-        frame_botoes.pack(fill="x", pady=10)
-
-        tk.Button(frame_botoes, text="Cancelar Seleção",
-                  font=("Segoe UI", 12, "bold"),
-                  bg="#ef4444", fg="white",
-                  command=self.cancelar_selecao).pack(side="left", padx=5)
-
-        tk.Button(frame_botoes, text="Gerar Folha",
-                  font=("Segoe UI", 12, "bold"),
-                  bg="#16a34a", fg="white",
-                  command=self.gerar).pack(side="right", padx=5)
-
-    def cor_status(self, status):
-        status = status.lower()
-        if status == "ativo":
-            return "#16a34a9c"
-        if status == "férias":
-            return "#c66b04c6"
-        return "#dc1010"
+        tk.Button(self.frame, text="Gerar PDF", command=self.gerar).pack(pady=10)
+        tk.Button(self.frame, text="⬅ Voltar", command=self.voltar).pack(pady=10)
 
     def carregar_funcionarios(self):
-        try:
-            with open(ARQ_FUNC, "r", encoding="utf-8") as f:
-                self.funcionarios = json.load(f)
-        except:
-            self.funcionarios = []
+        with open("funcionarios.json", encoding="utf-8") as f:
+            self.funcionarios = json.load(f)
 
-        self.funcionarios.sort(key=lambda x: x["nome"].lower())
-        self.vars = []
-        self.atualizar_lista(self.funcionarios)
-
-    def atualizar_lista(self, lista):
-        # Limpa itens existentes
-        for w in self.frame_itens.winfo_children():
-            w.destroy()
-
-        self.vars.clear()
-
-        for f in lista:
-            var = tk.BooleanVar()
-            var.trace_add("write", self.atualizar_contador)
-
-            chk = tk.Checkbutton(
-                self.frame_itens,
-                text=f"{f['nome']} — {f['cargo']} ({f['status']})",
-                fg=self.cor_status(f["status"]),
-                bg="white",
-                anchor="w",
-                variable=var
-            )
-            chk.pack(fill="x", padx=10, pady=2)
-
-            self.vars.append((f, var))
-
-        self.atualizar_contador()
-
-    def atualizar_contador(self, *args):
-        total = sum(1 for _, v in self.vars if v.get())
-        self.lbl_contador.config(text=f"Selecionados: {total}")
-
-    def filtrar(self, *args):
-        termo = self.var_busca.get().lower()
-        filtrados = [
-            f for f in self.funcionarios
-            if termo in f["nome"].lower() or termo in f["matricula"].lower()
-        ]
-        self.atualizar_lista(filtrados)
-
-    def cancelar_selecao(self):
-        for _, var in self.vars:
-            var.set(False)
+        menu = self.combo["menu"]
+        menu.delete(0, "end")
+        for f in self.funcionarios:
+            menu.add_command(label=f["nome"],
+                             command=lambda v=f["nome"]: self.func_var.set(v))
 
     def gerar(self):
-        selecionados = [f for f, v in self.vars if v.get()]
-        if not selecionados:
-            messagebox.showwarning("Atenção", "Selecione um funcionário.")
+        nome = self.func_var.get()
+        mes = self.mes_var.get()
+        ano = self.ano_var.get()
+
+        if not nome or not mes or not ano:
+            messagebox.showwarning("Atenção", "Preencha todos os campos!")
             return
 
-        f = selecionados[0]
-        gerador = GeradorFolhaPDF()
-        pdf_memoria = gerador.gerar_folha_memoria(
-            f["nome"], f["cargo"], f["matricula"], "MÊS ATUAL", f["status"]
-        )
-        gerador.abrir_pdf_memoria(pdf_memoria)
+        func = next(f for f in self.funcionarios if f["nome"] == nome)
+        gerador = GeradorFolhaPonto()
+        gerador.gerar(func, mes, ano)
+
+        messagebox.showinfo("OK", "Folha gerada com sucesso!")

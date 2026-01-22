@@ -6,83 +6,118 @@ from tela_gerar_lote import TelaGerarLote
 class TelaPrincipal:
     def __init__(self, root, perfil):
         self.root = root
-        self.root.title("Ponto Certo - Sistema de Folha de Ponto")
-        self.root.state("zoomed")
-
         self.perfil = perfil
-        self.btns_menu = []
+        self.root.title("Ponto Certo - Sistema Corporativo de Folha de Ponto")
+        self.root.state("zoomed")
+        self.root.configure(bg="#0b1220")
+
+        # Ícones
+        self.icon_folha = tk.PhotoImage(file="assets/icons/folha.png")
+        self.icon_lote = tk.PhotoImage(file="assets/icons/lote.png")
+        self.icon_sair = tk.PhotoImage(file="assets/icons/sair.png")
+        self.icon_logo = tk.PhotoImage(file="assets/icons/logo.png")
+
         self.criar_layout()
+        self.mostrar_home()
 
     def criar_layout(self):
-        self.container = tk.Frame(self.root, bg="#f3f4f6")
+        self.container = tk.Frame(self.root, bg="#0b1220")
         self.container.pack(fill="both", expand=True)
 
-        topo = tk.Frame(self.container, bg="#0f172a", height=60)
-        topo.pack(fill="x")
-        topo.pack_propagate(False)
-
-        tk.Label(topo, text="Ponto Certo — Sistema de Folha de Ponto",
-                 fg="white", bg="#0f172a",
-                 font=("Segoe UI", 14, "bold")).pack(side="left", padx=20)
-
-        tk.Label(topo, text=f"Perfil: {self.perfil.upper()}",
-                 fg="#cbd5e1", bg="#0f172a",
-                 font=("Segoe UI", 10)).pack(side="right", padx=20)
-
-        corpo = tk.Frame(self.container, bg="#e5e7eb")
-        corpo.pack(fill="both", expand=True)
-
-        self.menu = tk.Frame(corpo, bg="#020617", width=240)
+        # Sidebar
+        self.menu = tk.Frame(self.container, bg="#020617", width=280)
         self.menu.pack(side="left", fill="y")
         self.menu.pack_propagate(False)
 
-        tk.Label(self.menu, text="MENU",
-                 fg="#94a3b8", bg="#020617",
-                 font=("Segoe UI", 10, "bold")).pack(pady=(20, 10), anchor="w", padx=20)
+        tk.Label(self.menu, image=self.icon_logo, bg="#020617").pack(pady=(30, 10))
 
-        self.add_btn("📄  Gerar Folha Individual", lambda: self.abrir(TelaGerarIndividual))
-        self.add_btn("📦  Gerar em Lote", lambda: self.abrir(TelaGerarLote))
-        self.add_btn("🚪  Sair do Sistema", self.sair)
+        tk.Label(
+            self.menu, text="PONTO CERTO",
+            fg="white", bg="#020617",
+            font=("Segoe UI", 18, "bold")
+        ).pack()
 
-        self.area = tk.Frame(corpo, bg="white")
-        self.area.pack(side="right", fill="both", expand=True)
+        tk.Label(
+            self.menu, text=f"Perfil: {self.perfil.upper()}",
+            fg="#94a3b8", bg="#020617",
+            font=("Segoe UI", 11)
+        ).pack(pady=(0, 30))
 
-        tk.Label(self.area, text="Bem-vindo ao Ponto Certo",
-                 font=("Segoe UI", 24, "bold"), bg="white").pack(pady=(60, 10))
+        self.btn_individual = self.criar_botao(self.icon_folha, "Gerar Folha Individual", self.abrir_individual)
+        self.btn_lote = self.criar_botao(self.icon_lote, "Gerar em Lote", self.abrir_lote)
 
-        tk.Label(self.area,
-                 text="Escolha uma opção no menu lateral para continuar.",
-                 font=("Segoe UI", 13), bg="white").pack()
+        tk.Frame(self.menu, height=40, bg="#020617").pack()
 
-    def add_btn(self, texto, comando):
+        self.criar_botao(self.icon_sair, "Sair do Sistema", self.sair)
+
+        # Área dinâmica
+        self.area = tk.Frame(self.container, bg="#0b1220")
+        self.area.pack(side="right", fill="both", expand=True, padx=40, pady=40)
+
+    def criar_botao(self, icone, texto, comando):
         btn = tk.Button(
-            self.menu, text=texto, command=lambda b=texto: self.select(b, comando),
-            bg="#020617", fg="#e5e7eb",
+            self.menu,
+            image=icone,
+            text="  " + texto,
+            compound="left",
+            command=lambda b=texto: self.executar(b, comando),
+            bg="#020617",
+            fg="#e5e7eb",
             activebackground="#1e293b",
             activeforeground="white",
-            bd=0, anchor="w",
-            padx=25, pady=10,
-            font=("Segoe UI", 11)
+            bd=0,
+            anchor="w",
+            padx=25,
+            font=("Segoe UI", 12),
+            height=46
         )
-        btn.pack(fill="x")
-        self.btns_menu.append(btn)
+        btn.pack(fill="x", pady=6)
+        return btn
 
-        btn.bind("<Enter>", lambda e, b=btn: b.configure(bg="#1e293b"))
-        btn.bind("<Leave>", lambda e, b=btn: self.reset_hover(b))
-
-    def select(self, texto, comando):
-        for b in self.btns_menu:
-            b.configure(bg="#020617")
-        widget = self.root.focus_get()
-        widget.configure(bg="#334155")  # botão ativo
+    def executar(self, nome, comando):
+        self.atualizar_selecao(nome)
+        self.limpar_area()
         comando()
 
-    def reset_hover(self, btn):
-        if btn.cget("bg") != "#334155":
-            btn.configure(bg="#020617")
+    def atualizar_selecao(self, nome):
+        for widget in self.menu.winfo_children():
+            if isinstance(widget, tk.Button):
+                widget.config(bg="#020617")
 
-    def abrir(self, tela):
-        tela(self.root)
+        for widget in self.menu.winfo_children():
+            if isinstance(widget, tk.Button) and nome in widget.cget("text"):
+                widget.config(bg="#1e293b")
+
+    def limpar_area(self):
+        for w in self.area.winfo_children():
+            w.destroy()
+
+    def mostrar_home(self):
+        self.limpar_area()
+
+        card = tk.Frame(self.area, bg="#020617")
+        card.pack(pady=100, ipadx=50, ipady=40)
+
+        tk.Label(
+            card,
+            text="Bem-vindo ao Sistema Ponto Certo",
+            font=("Segoe UI", 26, "bold"),
+            bg="#020617", fg="white"
+        ).pack(pady=(0, 10))
+
+        tk.Label(
+            card,
+            text="Plataforma corporativa para geração automática\nde folhas de ponto em PDF.",
+            font=("Segoe UI", 14),
+            bg="#020617", fg="#cbd5e1",
+            justify="center"
+        ).pack()
+
+    def abrir_individual(self):
+        TelaGerarIndividual(self.area, self.mostrar_home)
+
+    def abrir_lote(self):
+        TelaGerarLote(self.area, self.mostrar_home)
 
     def sair(self):
         self.root.destroy()

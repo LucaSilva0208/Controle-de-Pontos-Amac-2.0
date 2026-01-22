@@ -10,19 +10,32 @@ nomes = [
 cargos = ["Analista", "Assistente", "Gerente", "Coordenador", "Auxiliar", "Supervisor"]
 status = ["ativo", "férias", "afastado"]
 
-funcionarios = []
 
-for i in range(1, 26):
-    nome = random.choice(nomes)
-    func = {
-        "nome": nome,
-        "cargo": random.choice(cargos),
-        "matricula": f"{1000+i}",
-        "status": random.choice(status)
-    }
-    funcionarios.append(func)
+def gerar_funcionarios(qtd=25, arquivo="funcionarios.json"):
+    funcionarios = []
+    used_matriculas = set()
 
-with open("funcionarios.json", "w", encoding="utf-8") as f:
-    json.dump(funcionarios, f, indent=4, ensure_ascii=False)
+    for i in range(1, qtd + 1):
+        # Garante matrícula única
+        matricula = f"{1000 + i}"
+        while matricula in used_matriculas:
+            matricula = str(random.randint(1000, 9999))
+        used_matriculas.add(matricula)
 
-print("✔ funcionarios.json gerado com sucesso!")
+        func = {
+            "nome": random.choice(nomes),
+            "cargo": random.choice(cargos),
+            "matricula": matricula,
+            "status": random.choice(status)
+        }
+
+        funcionarios.append(func)
+
+    with open(arquivo, "w", encoding="utf-8") as f:
+        json.dump(funcionarios, f, indent=4, ensure_ascii=False)
+
+    print(f"✔ {arquivo} gerado com sucesso com {qtd} funcionários!")
+
+
+if __name__ == "__main__":
+    gerar_funcionarios()
