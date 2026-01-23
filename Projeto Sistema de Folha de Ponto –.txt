@@ -1,0 +1,99 @@
+Projeto: Sistema de Folha de Ponto – Ponto Certo
+🎯 Objetivo Geral
+
+Desenvolver um sistema desktop em Python (Tkinter) para gerar automaticamente folhas de ponto de funcionários, a partir de um modelo Word oficial, preenchendo dados por mês/ano e funcionário, e exportando o resultado final em PDF pronto para envio ou impressão.
+
+🧱 Estrutura Central do Sistema
+
+O sistema deve:
+
+📄 Ler um arquivo Word base (modelo oficial da folha de ponto)
+→ Esse modelo é fixo e faz parte do sistema.
+
+✍️ Preencher automaticamente no Word:
+
+Nome do funcionário
+
+Matrícula
+
+Cargo
+
+Mês (digitado como número, mas impresso por extenso: ex: “Janeiro”)
+
+Ano
+
+Tabela com os dias do mês
+
+Estrutura da tabela:
+
+Dia
+
+Primeira Jornada
+
+Hora Entrada | Rubrica | Hora Saída | Rubrica
+
+Segunda Jornada
+
+Hora Entrada | Rubrica | Hora Saída | Rubrica
+
+Hora Extra
+
+Hora Entrada | Hora Saída | Rubrica
+
+🧠 Gerar a folha já preenchida em PDF, automaticamente:
+
+Word → preenchido → convertido em PDF
+
+O PDF é salvo para:
+
+Envio às unidades
+
+Impressão local
+
+🧩 Funcionalidades do Sistema
+1️⃣ Gerador de Folha (Word → PDF)
+
+Lê o modelo .docx
+
+Substitui os campos ({{NOME}}, {{MATRICULA}}, etc.)
+
+Preenche a tabela com os dias do mês
+
+Gera um novo .docx
+
+Converte automaticamente para .pdf
+
+2️⃣ Tela Individual
+
+Permite:
+
+Selecionar 1 funcionário
+
+Digitar:
+
+Mês (número)
+
+Ano
+
+Gerar a folha daquele funcionário em PDF
+
+3️⃣ Tela em Lote
+
+Permite:
+
+Buscar funcionário por:
+
+Nome
+
+Matrícula
+
+Selecionar vários funcionários
+
+Gerar todas as folhas de uma vez em PDF
+
+Regra de Ouro do Projeto
+
+✔️ O sistema não desenha a folha do zero
+✔️ Ele usa o Word oficial como base, edita e gera PDF
+✔️ O Word é o modelo definitivo do layout
+✔️ O código só preenche e exporta

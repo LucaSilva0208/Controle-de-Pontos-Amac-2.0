@@ -2,7 +2,6 @@ import tkinter as tk
 from tela_gerar_individual import TelaGerarIndividual
 from tela_gerar_lote import TelaGerarLote
 
-
 class TelaPrincipal:
     def __init__(self, root, perfil):
         self.root = root
@@ -10,12 +9,6 @@ class TelaPrincipal:
         self.root.title("Ponto Certo - Sistema Corporativo de Folha de Ponto")
         self.root.state("zoomed")
         self.root.configure(bg="#0b1220")
-
-        # Ícones
-        self.icon_folha = tk.PhotoImage(file="assets/icons/folha.png")
-        self.icon_lote = tk.PhotoImage(file="assets/icons/lote.png")
-        self.icon_sair = tk.PhotoImage(file="assets/icons/sair.png")
-        self.icon_logo = tk.PhotoImage(file="assets/icons/logo.png")
 
         self.criar_layout()
         self.mostrar_home()
@@ -29,37 +22,34 @@ class TelaPrincipal:
         self.menu.pack(side="left", fill="y")
         self.menu.pack_propagate(False)
 
-        tk.Label(self.menu, image=self.icon_logo, bg="#020617").pack(pady=(30, 10))
-
         tk.Label(
-            self.menu, text="PONTO CERTO",
+            self.menu,
+            text="PONTO CERTO",
             fg="white", bg="#020617",
             font=("Segoe UI", 18, "bold")
-        ).pack()
+        ).pack(pady=(30, 10))
 
         tk.Label(
-            self.menu, text=f"Perfil: {self.perfil.upper()}",
+            self.menu,
+            text=f"Perfil: {self.perfil.upper()}",
             fg="#94a3b8", bg="#020617",
             font=("Segoe UI", 11)
         ).pack(pady=(0, 30))
 
-        self.btn_individual = self.criar_botao(self.icon_folha, "Gerar Folha Individual", self.abrir_individual)
-        self.btn_lote = self.criar_botao(self.icon_lote, "Gerar em Lote", self.abrir_lote)
-
+        # Botões funcionais
+        self.btn_individual = self.criar_botao("Gerar Folha Individual", self.abrir_individual)
+        self.btn_lote = self.criar_botao("Gerar em Lote", self.abrir_lote)
         tk.Frame(self.menu, height=40, bg="#020617").pack()
-
-        self.criar_botao(self.icon_sair, "Sair do Sistema", self.sair)
+        self.criar_botao("Sair do Sistema", self.sair)
 
         # Área dinâmica
         self.area = tk.Frame(self.container, bg="#0b1220")
         self.area.pack(side="right", fill="both", expand=True, padx=40, pady=40)
 
-    def criar_botao(self, icone, texto, comando):
+    def criar_botao(self, texto, comando):
         btn = tk.Button(
             self.menu,
-            image=icone,
-            text="  " + texto,
-            compound="left",
+            text=texto,
             command=lambda b=texto: self.executar(b, comando),
             bg="#020617",
             fg="#e5e7eb",
@@ -69,7 +59,7 @@ class TelaPrincipal:
             anchor="w",
             padx=25,
             font=("Segoe UI", 12),
-            height=46
+            height=2
         )
         btn.pack(fill="x", pady=6)
         return btn
@@ -94,7 +84,6 @@ class TelaPrincipal:
 
     def mostrar_home(self):
         self.limpar_area()
-
         card = tk.Frame(self.area, bg="#020617")
         card.pack(pady=100, ipadx=50, ipady=40)
 
