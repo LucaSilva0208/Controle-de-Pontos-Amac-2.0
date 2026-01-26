@@ -24,17 +24,17 @@ class TelaGerarLote:
         # Cabeçalho
         header = tk.Frame(self.frame, bg="#e5e7eb")
         header.pack(fill="x", pady=10)
-        tk.Label(header, text="Gerar Folhas em Lote", font=("Segoe UI", 18, "bold"), bg="#e5e7eb").pack()
+        tk.Label(header, text="Gerar Folhas em Lote (Por Unidade)", font=("Segoe UI", 18, "bold"), bg="#e5e7eb").pack()
 
         # Filtro
         frame_filtro = tk.Frame(self.frame, bg="#e5e7eb")
         frame_filtro.pack(fill="x", padx=20)
-        tk.Label(frame_filtro, text="Filtrar:", bg="#e5e7eb").pack(side="left")
+        tk.Label(frame_filtro, text="Filtrar (Nome ou Unidade):", bg="#e5e7eb").pack(side="left")
         self.busca = tk.StringVar()
-        self.busca.trace_add("write", self.filtrar)
+        self.busca.trace("w", self.filtrar)
         tk.Entry(frame_filtro, textvariable=self.busca).pack(side="left", fill="x", expand=True, padx=5)
 
-        # Área de Lista com Scroll (Importante para muitos funcionários)
+        # Área de Lista com Scroll
         frame_lista_container = tk.Frame(self.frame, bd=1, relief="sunken")
         frame_lista_container.pack(fill="both", expand=True, padx=20, pady=10)
         
@@ -57,11 +57,17 @@ class TelaGerarLote:
         frame_botoes = tk.Frame(self.frame, bg="#e5e7eb")
         frame_botoes.pack(fill="x", pady=20, padx=20)
 
-        tk.Button(frame_botoes, text="Gerar para Impressão (Pasta)", command=lambda: self.gerar("impressao"), 
-                  bg="#2196F3", fg="white", width=25).pack(side="left", padx=5)
+        # Botões de Seleção
+        frame_sel = tk.Frame(self.frame, bg="#e5e7eb")
+        frame_sel.pack(fill="x", padx=20)
+        tk.Button(frame_sel, text="Marcar Ativos", command=lambda: self.toggle_ativos(True), font=("Arial", 8)).pack(side="left", padx=2)
+        tk.Button(frame_sel, text="Desmarcar Todos", command=lambda: self.toggle_all(False), font=("Arial", 8)).pack(side="left", padx=2)
+
+        tk.Button(frame_botoes, text="Gerar Impressão (Pastas)", command=lambda: self.gerar("impressao"), 
+                  bg="#2196F3", fg="white", width=20, height=2).pack(side="left", padx=5)
         
-        tk.Button(frame_botoes, text="Gerar para Envio (ZIP)", command=lambda: self.gerar("envio"), 
-                  bg="#FF9800", fg="white", width=25).pack(side="left", padx=5)
+        tk.Button(frame_botoes, text="Gerar ZIP (Organizado)", command=lambda: self.gerar("envio"), 
+                  bg="#4CAF50", fg="white", width=30, height=2).pack(side="left", padx=5)
         
         tk.Button(frame_botoes, text="Voltar", command=self.voltar).pack(side="right")
 
@@ -70,47 +76,83 @@ class TelaGerarLote:
             with open("funcionarios.json", encoding="utf-8") as f:
                 self.funcionarios = json.load(f)
             
-            # Ordena por nome
-            self.funcionarios.sort(key=lambda x: x['nome'])
+            # Ordena por Unidade -> Status (Ativos primeiro) -> Nome
+            self.funcionarios.sort(key=lambda x: (x.get('unidade', 'Geral'), x.get('status', 'Ativo'), x['nome']))
 
             # Inicializa Vars
             for f in self.funcionarios:
-                self.vars.append((f, tk.BooleanVar(value=True)))
+                status = f.get('status', 'Ativo')
+                # Só marca por padrão se NÃO for desligado
+                is_ativo = status != "Desligado"
+                self.vars.append((f, tk.BooleanVar(value=is_ativo)))
 
             self.atualizar_lista(self.funcionarios)
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao ler funcionarios.json: {e}")
 
     def atualizar_lista(self, lista_filtrada):
-        # Limpa widgets antigos
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
 
-        # Botões de selecionar tudo/nenhum
-        frame_tools = tk.Frame(self.scrollable_frame, bg="white")
-        frame_tools.pack(fill="x", pady=2)
-        tk.Button(frame_tools, text="Marcar Todos", command=lambda: self.toggle_all(True), font=("Arial", 8)).pack(side="left")
-        tk.Button(frame_tools, text="Desmarcar Todos", command=lambda: self.toggle_all(False), font=("Arial", 8)).pack(side="left")
-
+        last_unidade = None
+        
         for f in lista_filtrada:
-            # Encontra a var correspondente na lista global
+            unidade_atual = f.get('unidade', 'Geral')
+            status = f.get('status', 'Ativo')
+            
+            # Separador de Unidade
+            if unidade_atual != last_unidade:
+                lbl_separador = tk.Label(self.scrollable_frame, text=f"--- {unidade_atual.upper()} ---", 
+                                         bg="#f0f0f0", fg="#333", font=("Arial", 9, "bold"), anchor="w")
+                lbl_separador.pack(fill="x", padx=2, pady=(10, 2))
+                last_unidade = unidade_atual
+
+            # Encontra a var correspondente
             par = next((p for p in self.vars if p[0]["matricula"] == f["matricula"]), None)
             if par:
                 func, var = par
-                cb = tk.Checkbutton(self.scrollable_frame, text=f"{func['nome']} ({func['matricula']})", 
-                                    variable=var, bg="white", anchor="w")
-                cb.pack(fill="x", padx=5)
+                
+                # Formatação Visual do Item
+                cor_texto = "black"
+                texto_extra = ""
+                
+                if status == "Desligado":
+                    cor_texto = "red"
+                    texto_extra = " (DESLIGADO)"
+                elif status == "Férias":
+                    cor_texto = "#FFA500" # Laranja
+                    texto_extra = " (FÉRIAS)"
+                elif status == "Afastado":
+                    cor_texto = "purple"
+                    texto_extra = " (AFASTADO)"
+
+                texto_display = f"{func['nome']}{texto_extra}"
+                
+                cb = tk.Checkbutton(self.scrollable_frame, text=texto_display, 
+                                    variable=var, bg="white", fg=cor_texto, anchor="w")
+                cb.pack(fill="x", padx=10)
 
     def toggle_all(self, state):
         termo = self.busca.get().lower()
-        # Afeta apenas os visíveis no filtro atual? Ou todos? Geralmente os visíveis.
         for f, var in self.vars:
-             if termo in f["nome"].lower() or termo in f["matricula"]:
+             if self.match_filtro(f, termo):
                  var.set(state)
+
+    def toggle_ativos(self, state):
+        """Marca apenas quem não está desligado"""
+        termo = self.busca.get().lower()
+        for f, var in self.vars:
+             if self.match_filtro(f, termo):
+                 if f.get('status') != "Desligado":
+                    var.set(state)
+
+    def match_filtro(self, f, termo):
+        unidade = f.get('unidade', '').lower()
+        return termo in f["nome"].lower() or termo in f["matricula"] or termo in unidade
 
     def filtrar(self, *args):
         termo = self.busca.get().lower()
-        filtrados = [f for f, _ in self.vars if termo in f["nome"].lower() or termo in f["matricula"]]
+        filtrados = [f for f, _ in self.vars if self.match_filtro(f, termo)]
         self.atualizar_lista(filtrados)
 
     def gerar(self, tipo):
@@ -124,8 +166,13 @@ class TelaGerarLote:
         
         try:
             gerador = GeradorFolhaPonto()
+            # Valida regra de negócio global (se data inválida, para tudo aqui)
+            gerador.validar_regras_negocio(mes, ano) 
+        except ValueError as ve:
+            messagebox.showwarning("Bloqueio de Regra", str(ve))
+            return
         except FileNotFoundError:
-            messagebox.showerror("Erro", "Modelo Word não encontrado.")
+            messagebox.showerror("Erro", "Arquivos de modelo não encontrados.")
             return
 
         self.parent.config(cursor="wait")
@@ -133,37 +180,66 @@ class TelaGerarLote:
 
         try:
             if tipo == "impressao":
-                pasta_destino = filedialog.askdirectory(title="Onde salvar os PDFs?")
-                if not pasta_destino: return
+                pasta_raiz = filedialog.askdirectory(title="Onde salvar as pastas?")
+                if not pasta_raiz: 
+                    self.parent.config(cursor="")
+                    return
 
+                count = 0
+                erros = []
                 for f in selecionados:
+                    unidade = f.get('unidade', 'Geral').strip()
+                    pasta_unidade = os.path.join(pasta_raiz, unidade)
+                    os.makedirs(pasta_unidade, exist_ok=True)
+
                     nome_arq = f"{f['nome'].replace(' ', '_')}_{mes}_{ano}.pdf"
-                    caminho = os.path.join(pasta_destino, nome_arq)
-                    gerador.gerar(f, mes, ano, caminho)
+                    caminho = os.path.join(pasta_unidade, nome_arq)
+                    
+                    try:
+                        gerador.gerar(f, mes, ano, caminho)
+                        count += 1
+                    except Exception as e:
+                        erros.append(f"{f['nome']}: {e}")
                 
-                messagebox.showinfo("Sucesso", f"{len(selecionados)} arquivos gerados em:\n{pasta_destino}")
+                msg = f"{count} folhas geradas em:\n{pasta_raiz}"
+                if erros: msg += "\n\nErros:\n" + "\n".join(erros)
+                messagebox.showinfo("Relatório", msg)
 
             else: # ZIP
-                caminho_zip = filedialog.asksaveasfilename(defaultextension=".zip", filetypes=[("ZIP", "*.zip")], title="Salvar Arquivo ZIP")
-                if not caminho_zip: return
+                caminho_zip = filedialog.asksaveasfilename(
+                    defaultextension=".zip", 
+                    filetypes=[("ZIP", "*.zip")], 
+                    title="Salvar ZIP",
+                    initialfile=f"Folhas_{mes}_{ano}.zip"
+                )
+                if not caminho_zip: 
+                    self.parent.config(cursor="")
+                    return
 
-                # Usa diretório temporário seguro para gerar os PDFs antes de zipar
                 with tempfile.TemporaryDirectory() as temp_dir:
-                    arquivos_pdf = []
+                    arquivos_zip = []
                     for f in selecionados:
-                        nome_arq = f"{f['nome'].replace(' ', '_')}_{mes}_{ano}.pdf"
-                        caminho_temp = os.path.join(temp_dir, nome_arq)
-                        gerador.gerar(f, mes, ano, caminho_temp)
-                        arquivos_pdf.append(nome_arq) # Guarda só o nome para o zip
+                        unidade = f.get('unidade', 'Geral').strip()
+                        pasta_u_temp = os.path.join(temp_dir, unidade)
+                        os.makedirs(pasta_u_temp, exist_ok=True)
 
-                    # Cria o ZIP final
+                        nome_arq = f"{f['nome'].replace(' ', '_')}.pdf"
+                        caminho_abs = os.path.join(pasta_u_temp, nome_arq)
+                        
+                        try:
+                            gerador.gerar(f, mes, ano, caminho_abs)
+                            relativo = os.path.join(unidade, nome_arq)
+                            arquivos_zip.append((caminho_abs, relativo))
+                        except Exception as e:
+                            print(f"Erro {f['nome']}: {e}")
+
                     with zipfile.ZipFile(caminho_zip, 'w') as zipf:
-                        for arq in arquivos_pdf:
-                            zipf.write(os.path.join(temp_dir, arq), arcname=arq)
+                        for abs_p, rel_p in arquivos_zip:
+                            zipf.write(abs_p, arcname=rel_p)
                 
-                messagebox.showinfo("Sucesso", f"ZIP gerado com sucesso:\n{caminho_zip}")
+                messagebox.showinfo("Sucesso", f"ZIP gerado com {len(arquivos_zip)} arquivos.")
 
         except Exception as e:
-            messagebox.showerror("Erro Crítico", f"Falha na geração em lote: {e}")
+            messagebox.showerror("Erro Crítico", f"Falha: {e}")
         finally:
             self.parent.config(cursor="")
