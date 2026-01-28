@@ -52,7 +52,7 @@ class TelaLogin:
             self.frame.destroy()
 
             # Abre a tela principal no mesmo root
-            TelaPrincipal(self.root, perfil)
+            TelaPrincipal(self.root, {'usuario': usuario, 'perfil': perfil})
         else:
             messagebox.showerror("Erro", "Usuário ou senha inválidos")
             self.user.delete(0, tk.END)

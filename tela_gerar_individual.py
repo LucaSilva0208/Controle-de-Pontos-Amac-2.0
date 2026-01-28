@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, ttk
 import json
 import os
 import datetime
@@ -129,6 +129,23 @@ class TelaGerarIndividual:
 
         gerador = GeradorFolhaPonto()
 
+        # --- JANELA DE CARREGAMENTO ---
+        loading_win = tk.Toplevel(self.parent)
+        loading_win.title("Processando")
+        loading_win.geometry("300x120")
+        loading_win.resizable(False, False)
+        loading_win.transient(self.parent) # Fica sempre por cima da janela pai
+        loading_win.grab_set() # Bloqueia interação com a janela principal
+        
+        # Centralizar visualmente (simplificado)
+        loading_win.geometry("+%d+%d" % (self.parent.winfo_rootx() + 50, self.parent.winfo_rooty() + 50))
+
+        tk.Label(loading_win, text="Gerando Folha de Ponto...\nPor favor, aguarde.", font=("Segoe UI", 10)).pack(pady=15)
+        pb = ttk.Progressbar(loading_win, mode='indeterminate')
+        pb.pack(fill="x", padx=20, pady=5)
+        pb.start(10) # Animação
+        loading_win.update() # Força a renderização antes de travar no processo
+
         # BLOCO DE TENTATIVA DE GERAÇÃO (Captura regras de negócio)
         try:
             if self.tipo_var.get() == "impressao":
@@ -163,4 +180,5 @@ class TelaGerarIndividual:
         except Exception as e:
             messagebox.showerror("Erro", f"Erro crítico na geração: {e}")
         finally:
+            loading_win.destroy() # Fecha a janela de carregamento
             self.parent.config(cursor="")

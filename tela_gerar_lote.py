@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, ttk
 import json
 import os
 import zipfile
@@ -26,15 +26,32 @@ class TelaGerarLote:
         header.pack(fill="x", pady=10)
         tk.Label(header, text="Gerar Folhas em Lote (Por Unidade)", font=("Segoe UI", 18, "bold"), bg="#e5e7eb").pack()
 
-        # Filtro
-        frame_filtro = tk.Frame(self.frame, bg="#e5e7eb")
-        frame_filtro.pack(fill="x", padx=20)
-        tk.Label(frame_filtro, text="Filtrar (Nome ou Unidade):", bg="#e5e7eb").pack(side="left")
+        # --- PAINEL DE CONTROLE (FILTRO + DATA) ---
+        frame_controles = tk.Frame(self.frame, bg="#e5e7eb")
+        frame_controles.pack(fill="x", padx=20, pady=5)
+
+        # 1. Filtro
+        frame_filtro = tk.Frame(frame_controles, bg="#e5e7eb")
+        frame_filtro.pack(side="left", fill="x", expand=True)
+        
+        tk.Label(frame_filtro, text="Filtrar:", bg="#e5e7eb", font=("Arial", 10, "bold")).pack(side="left")
         self.busca = tk.StringVar()
         self.busca.trace("w", self.filtrar)
-        tk.Entry(frame_filtro, textvariable=self.busca).pack(side="left", fill="x", expand=True, padx=5)
+        tk.Entry(frame_filtro, textvariable=self.busca, width=30).pack(side="left", padx=5)
 
-        # Área de Lista com Scroll
+        # 2. Seletor de Mês e Ano
+        frame_data = tk.Frame(frame_controles, bg="#e5e7eb")
+        frame_data.pack(side="right")
+
+        tk.Label(frame_data, text="Mês:", bg="#e5e7eb", font=("Arial", 10, "bold")).pack(side="left")
+        self.mes_var = tk.IntVar(value=datetime.datetime.now().month)
+        tk.Entry(frame_data, textvariable=self.mes_var, width=5).pack(side="left", padx=5)
+
+        tk.Label(frame_data, text="Ano:", bg="#e5e7eb", font=("Arial", 10, "bold")).pack(side="left")
+        self.ano_var = tk.IntVar(value=datetime.datetime.now().year)
+        tk.Entry(frame_data, textvariable=self.ano_var, width=8).pack(side="left", padx=5)
+
+        # --- ÁREA DE LISTA COM SCROLL ---
         frame_lista_container = tk.Frame(self.frame, bd=1, relief="sunken")
         frame_lista_container.pack(fill="both", expand=True, padx=20, pady=10)
         
@@ -76,13 +93,12 @@ class TelaGerarLote:
             with open("funcionarios.json", encoding="utf-8") as f:
                 self.funcionarios = json.load(f)
             
-            # Ordena por Unidade -> Status (Ativos primeiro) -> Nome
+            # Ordena: Unidade -> Status -> Nome
             self.funcionarios.sort(key=lambda x: (x.get('unidade', 'Geral'), x.get('status', 'Ativo'), x['nome']))
 
             # Inicializa Vars
             for f in self.funcionarios:
                 status = f.get('status', 'Ativo')
-                # Só marca por padrão se NÃO for desligado
                 is_ativo = status != "Desligado"
                 self.vars.append((f, tk.BooleanVar(value=is_ativo)))
 
@@ -112,22 +128,20 @@ class TelaGerarLote:
             if par:
                 func, var = par
                 
-                # Formatação Visual do Item
+                # Visual
                 cor_texto = "black"
                 texto_extra = ""
-                
                 if status == "Desligado":
                     cor_texto = "red"
                     texto_extra = " (DESLIGADO)"
                 elif status == "Férias":
-                    cor_texto = "#FFA500" # Laranja
+                    cor_texto = "#FFA500"
                     texto_extra = " (FÉRIAS)"
                 elif status == "Afastado":
                     cor_texto = "purple"
                     texto_extra = " (AFASTADO)"
 
                 texto_display = f"{func['nome']}{texto_extra}"
-                
                 cb = tk.Checkbutton(self.scrollable_frame, text=texto_display, 
                                     variable=var, bg="white", fg=cor_texto, anchor="w")
                 cb.pack(fill="x", padx=10)
@@ -139,7 +153,6 @@ class TelaGerarLote:
                  var.set(state)
 
     def toggle_ativos(self, state):
-        """Marca apenas quem não está desligado"""
         termo = self.busca.get().lower()
         for f, var in self.vars:
              if self.match_filtro(f, termo):
@@ -161,12 +174,17 @@ class TelaGerarLote:
             messagebox.showwarning("Atenção", "Nenhum funcionário selecionado.")
             return
 
-        mes = datetime.datetime.today().month
-        ano = datetime.datetime.today().year
+        # Pega a Data dos Campos de Entrada
+        try:
+            mes = int(self.mes_var.get())
+            ano = int(self.ano_var.get())
+        except ValueError:
+            messagebox.showerror("Erro", "Mês e Ano devem ser números válidos.")
+            return
         
         try:
             gerador = GeradorFolhaPonto()
-            # Valida regra de negócio global (se data inválida, para tudo aqui)
+            # Valida regra de negócio (Dia 20)
             gerador.validar_regras_negocio(mes, ano) 
         except ValueError as ve:
             messagebox.showwarning("Bloqueio de Regra", str(ve))
@@ -178,6 +196,22 @@ class TelaGerarLote:
         self.parent.config(cursor="wait")
         self.parent.update()
 
+        # --- JANELA DE PROGRESSO ---
+        total_items = len(selecionados)
+        loading_win = tk.Toplevel(self.parent)
+        loading_win.title("Gerando em Lote")
+        loading_win.geometry("350x150")
+        loading_win.resizable(False, False)
+        loading_win.transient(self.parent)
+        loading_win.grab_set()
+        loading_win.geometry("+%d+%d" % (self.parent.winfo_rootx() + 50, self.parent.winfo_rooty() + 50))
+
+        lbl_status = tk.Label(loading_win, text=f"Iniciando... (0/{total_items})", font=("Segoe UI", 10))
+        lbl_status.pack(pady=15)
+        
+        pb = ttk.Progressbar(loading_win, orient="horizontal", length=300, mode="determinate", maximum=total_items)
+        pb.pack(pady=10)
+
         try:
             if tipo == "impressao":
                 pasta_raiz = filedialog.askdirectory(title="Onde salvar as pastas?")
@@ -187,7 +221,12 @@ class TelaGerarLote:
 
                 count = 0
                 erros = []
-                for f in selecionados:
+                for i, f in enumerate(selecionados):
+                    # Atualiza Progresso
+                    lbl_status.config(text=f"Processando: {f['nome']}\n({i+1}/{total_items})")
+                    pb['value'] = i + 1
+                    loading_win.update() # Atualiza a tela
+
                     unidade = f.get('unidade', 'Geral').strip()
                     pasta_unidade = os.path.join(pasta_raiz, unidade)
                     os.makedirs(pasta_unidade, exist_ok=True)
@@ -218,7 +257,12 @@ class TelaGerarLote:
 
                 with tempfile.TemporaryDirectory() as temp_dir:
                     arquivos_zip = []
-                    for f in selecionados:
+                    for i, f in enumerate(selecionados):
+                        # Atualiza Progresso
+                        lbl_status.config(text=f"Processando: {f['nome']}\n({i+1}/{total_items})")
+                        pb['value'] = i + 1
+                        loading_win.update()
+
                         unidade = f.get('unidade', 'Geral').strip()
                         pasta_u_temp = os.path.join(temp_dir, unidade)
                         os.makedirs(pasta_u_temp, exist_ok=True)
@@ -242,4 +286,5 @@ class TelaGerarLote:
         except Exception as e:
             messagebox.showerror("Erro Crítico", f"Falha: {e}")
         finally:
+            loading_win.destroy()
             self.parent.config(cursor="")
