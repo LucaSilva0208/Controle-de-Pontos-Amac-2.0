@@ -248,18 +248,19 @@ class GeradorFolhaPonto:
                 cell_inicio.merge(cell_fim)
                 self.celula_texto(cell_inicio, texto_bloqueio, bold=True, size=7)
 
-        # Espaçador mínimo
-        self.add_spacer(doc, pt_size=2)
+        # Espaçador ajustado para equilibrar com o afastamento das assinaturas
+        self.add_spacer(doc, pt_size=5)
 
         # --- 5. RODAPÉ ---
         p = doc.add_paragraph("Reconheço a exatidão destas anotações:")
         p.style.font.size = Pt(8)
-        p.paragraph_format.space_after = Pt(2)
+        p.paragraph_format.space_after = Pt(16)
+        p.paragraph_format.space_after = Pt(9)
 
         table_ass = doc.add_table(rows=1, cols=3)
-        self.celula_texto(table_ass.cell(0, 0), "_______________________\nAssinatura Empregado", size=8)
-        self.celula_texto(table_ass.cell(0, 1), "Data: ____/____/____", size=8)
-        self.celula_texto(table_ass.cell(0, 2), "_______________________\nAssinatura Chefia", size=8)
+        self.celula_texto(table_ass.cell(0, 0), "_____________________________\nAssinatura Empregado", size=8)
+        self.celula_texto(table_ass.cell(0, 1), "Data: ______/______/______", size=8)
+        self.celula_texto(table_ass.cell(0, 2), "_____________________________\nAssinatura Chefia", size=8)
 
         # --- SALVAR ---
         docx_temp = caminho_saida_pdf.replace(".pdf", ".docx")
