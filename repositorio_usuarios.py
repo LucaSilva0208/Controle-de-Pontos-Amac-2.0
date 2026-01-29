@@ -18,3 +18,27 @@ class RepositorioUsuarios:
     def existe_usuario(self, username):
         dados = self.carregar()
         return username in dados
+
+    def buscar_todos(self):
+        return self.carregar()
+
+    def buscar_por_login(self, login):
+        dados = self.carregar()
+        return dados.get(login)
+
+    def salvar_usuario(self, login, senha, perfil, unidade):
+        dados = self.carregar()
+        dados[login] = {
+            "senha": senha,
+            "perfil": perfil,
+            "unidade": unidade
+        }
+        self.salvar(dados)
+
+    def excluir_usuario(self, login):
+        dados = self.carregar()
+        if login in dados:
+            del dados[login]
+            self.salvar(dados)
+            return True
+        return False

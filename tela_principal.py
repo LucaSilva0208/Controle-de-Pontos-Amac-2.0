@@ -2,8 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from tela_gerar_individual import TelaGerarIndividual
 from tela_gerar_lote import TelaGerarLote
-# IMPORTAÇÃO CORRETA CONFORME SEU PEDIDO
-from repositorio_usuarios import RepositorioUsuarios 
+from tela_gestao_usuarios import TelaGestaoUsuarios
 
 class TelaPrincipal:
     def __init__(self, root, dados_usuario):
@@ -24,6 +23,10 @@ class TelaPrincipal:
         self.root.resizable(True, True)
 
         self.criar_layout()
+        
+        # Configuração de Logout Automático (15 minutos)
+        self.timer_id = None
+        self.iniciar_monitoramento_inatividade()
         self.mostrar_home()
 
     def criar_layout(self):
@@ -40,12 +43,14 @@ class TelaPrincipal:
         self.area.pack(side="right", fill="both", expand=True)
 
         # Logo / Título
-        tk.Label(
+        self.lbl_logo = tk.Label(
             self.menu,
             text="PONTO CERTO",
             fg="white", bg="#020617",
             font=("Segoe UI", 18, "bold")
-        ).pack(pady=(30, 10))
+        )
+        self.lbl_logo.pack(pady=(30, 10))
+        self.lbl_logo.bind("<Button-3>", lambda e: print("Core System developed by [SEU NOME]")) # Botão Direito do Mouse
 
         # Info Usuário
         tk.Label(
@@ -94,13 +99,8 @@ class TelaPrincipal:
 
     def executar(self, nome, comando):
         self.atualizar_selecao(nome)
-        
-        # Se for gestão (popup), não limpa a área principal
-        if "Gestão" in nome:
-            comando()
-        else:
-            self.limpar_area()
-            comando()
+        self.limpar_area()
+        comando()
 
     def atualizar_selecao(self, nome):
         # Reseta cores
@@ -149,12 +149,49 @@ class TelaPrincipal:
         TelaGerarLote(self.area, self.mostrar_home)
 
     def abrir_gestao_usuarios(self):
-        # AQUI ESTÁ A CHAMADA DA SUA CLASSE ESPECÍFICA
-        # RepositorioUsuarios(self.root, self.dados_usuario) # ERRO: Isso não é uma tela
-        messagebox.showinfo("Em Desenvolvimento", 
-                            "A tela visual de Gestão de Usuários ainda não foi implementada.\n"
-                            "A classe RepositorioUsuarios é apenas para dados.")
+        TelaGestaoUsuarios(self.area, self.mostrar_home)
+
+    # --- LÓGICA DE LOGOUT AUTOMÁTICO ---
+    def iniciar_monitoramento_inatividade(self):
+        # 15 minutos * 60 segundos * 1000 milissegundos
+        self.TEMPO_LIMITE = 15 * 60 * 1000 
+        
+        # Monitora qualquer movimento ou tecla na janela principal
+        self.root.bind_all('<Any-KeyPress>', self.reset_timer)
+        self.root.bind_all('<Any-ButtonPress>', self.reset_timer)
+        self.root.bind_all('<Motion>', self.reset_timer)
+        
+        self.reset_timer()
+
+    def reset_timer(self, event=None):
+        # Cancela o timer anterior se existir
+        if self.timer_id:
+            self.root.after_cancel(self.timer_id)
+        
+        # Inicia um novo timer para logout
+        self.timer_id = self.root.after(self.TEMPO_LIMITE, self.logout_por_inatividade)
+
+    def logout_por_inatividade(self):
+        messagebox.showwarning("Sessão Expirada", "Sua sessão foi encerrada por inatividade (15 min).")
+        self._realizar_logout()
 
     def sair(self):
         if messagebox.askyesno("Sair", "Deseja fazer logout e voltar ao login?"):
-            self.root.destroy()
+            self._realizar_logout()
+
+    def _realizar_logout(self):
+        # Limpa o timer para não disparar depois de sair
+        if self.timer_id:
+            self.root.after_cancel(self.timer_id)
+        
+        # Remove os bindings para não afetar a tela de login
+        self.root.unbind_all('<Any-KeyPress>')
+        self.root.unbind_all('<Any-ButtonPress>')
+        self.root.unbind_all('<Motion>')
+
+        self.container.destroy()
+        self.root.state("normal")
+        self.root.configure(bg="#f0f0f0")
+        
+        from tela_login import TelaLogin
+        TelaLogin(self.root)

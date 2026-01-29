@@ -76,17 +76,30 @@ class TelaGerarLote:
 
         # Botões de Seleção
         frame_sel = tk.Frame(self.frame, bg="#e5e7eb")
-        frame_sel.pack(fill="x", padx=20)
-        tk.Button(frame_sel, text="Marcar Ativos", command=lambda: self.toggle_ativos(True), font=("Arial", 8)).pack(side="left", padx=2)
-        tk.Button(frame_sel, text="Desmarcar Todos", command=lambda: self.toggle_all(False), font=("Arial", 8)).pack(side="left", padx=2)
+        frame_sel.pack(fill="x", padx=20, pady=(0, 10))
+        tk.Button(frame_sel, text="Marcar Ativos Visíveis", command=lambda: self.toggle_ativos(True), 
+                  font=("Segoe UI", 8), bg="#d1d5db", bd=0, cursor="hand2", padx=5, pady=2,
+                  activebackground="#9ca3af", activeforeground="black").pack(side="left", padx=2)
+        tk.Button(frame_sel, text="Desmarcar Visíveis", command=lambda: self.toggle_all(False), 
+                  font=("Segoe UI", 8), bg="#d1d5db", bd=0, cursor="hand2", padx=5, pady=2,
+                  activebackground="#9ca3af", activeforeground="black").pack(side="left", padx=2)
 
-        tk.Button(frame_botoes, text="Gerar Impressão (Pastas)", command=lambda: self.gerar("impressao"), 
-                  bg="#2196F3", fg="white", width=20, height=2).pack(side="left", padx=5)
+        # Botões de Ação Principais
+        frame_acoes_principais = tk.Frame(frame_botoes, bg="#e5e7eb")
+        frame_acoes_principais.pack(side="left", expand=True, fill="x")
+
+        tk.Button(frame_acoes_principais, text="Gerar Impressão (Pastas)", command=lambda: self.gerar("impressao"), 
+                  bg="#2196F3", fg="white", font=("Segoe UI", 10, "bold"), bd=0, cursor="hand2",
+                  activebackground="#1976D2", activeforeground="white").pack(side="left", padx=5, ipady=8)
         
-        tk.Button(frame_botoes, text="Gerar ZIP (Organizado)", command=lambda: self.gerar("envio"), 
-                  bg="#4CAF50", fg="white", width=30, height=2).pack(side="left", padx=5)
+        tk.Button(frame_acoes_principais, text="Gerar ZIP (Organizado)", command=lambda: self.gerar("envio"), 
+                  bg="#4CAF50", fg="white", font=("Segoe UI", 10, "bold"), bd=0, cursor="hand2",
+                  activebackground="#45a049", activeforeground="white").pack(side="left", padx=5, ipady=8)
         
-        tk.Button(frame_botoes, text="Voltar", command=self.voltar).pack(side="right")
+        tk.Button(frame_botoes, text="Voltar ao Menu", command=self.voltar,
+                  bg="#6c757d", fg="white", font=("Segoe UI", 10, "bold"),
+                  bd=0, cursor="hand2", activebackground="#5a6268", 
+                  activeforeground="white").pack(side="right", ipady=4, ipadx=10)
 
     def carregar_funcionarios(self):
         try:
@@ -147,17 +160,18 @@ class TelaGerarLote:
                 cb.pack(fill="x", padx=10)
 
     def toggle_all(self, state):
+        # Altera apenas os itens visíveis pelo filtro
         termo = self.busca.get().lower()
         for f, var in self.vars:
              if self.match_filtro(f, termo):
                  var.set(state)
 
     def toggle_ativos(self, state):
+        # Altera apenas os itens visíveis que não estão "Desligado"
         termo = self.busca.get().lower()
         for f, var in self.vars:
-             if self.match_filtro(f, termo):
-                 if f.get('status') != "Desligado":
-                    var.set(state)
+             if self.match_filtro(f, termo) and f.get('status') != "Desligado":
+                var.set(state)
 
     def match_filtro(self, f, termo):
         unidade = f.get('unidade', '').lower()

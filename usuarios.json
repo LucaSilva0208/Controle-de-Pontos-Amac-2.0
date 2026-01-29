@@ -1,12 +1,12 @@
 {
-  "admin": {
-    "senha": "1234",
-    "perfil": "admin",
-    "unidade": "Sede"
-  },
-  "gestor_creche": {
-    "senha": "abcd",
-    "perfil": "Gestor creche",
-    "unidade": "Creche Arco-Íris"
-  }
+    "admin": {
+        "senha": "1234",
+        "perfil": "admin",
+        "unidade": "Sede"
+    },
+    "Lucas": {
+        "senha": "1234",
+        "perfil": "comum",
+        "unidade": ""
+    }
 }

@@ -29,22 +29,16 @@ class TelaGerarIndividual:
         # --- 1. SELEÇÃO DE UNIDADE (NOVO) ---
         tk.Label(container, text="Selecione a Unidade:", bg="#f0f2f5").grid(row=0, column=0, sticky="e", padx=5, pady=5)
         
-        self.unidade_var = tk.StringVar(self.frame)
-        self.unidade_var.set("Selecione...")
-        self.unidade_var.trace("w", self.filtrar_funcionarios) # Quando mudar, chama o filtro
-
-        self.combo_unidade = tk.OptionMenu(container, self.unidade_var, "")
-        self.combo_unidade.config(width=30)
+        self.combo_unidade = ttk.Combobox(container, width=32, state="readonly")
+        self.combo_unidade.set("Selecione...")
+        self.combo_unidade.bind("<<ComboboxSelected>>", self.filtrar_funcionarios)
         self.combo_unidade.grid(row=0, column=1, sticky="w", padx=5, pady=5)
 
         # --- 2. SELEÇÃO DE FUNCIONÁRIO ---
         tk.Label(container, text="Selecione o Funcionário:", bg="#f0f2f5").grid(row=1, column=0, sticky="e", padx=5, pady=5)
         
-        self.func_var = tk.StringVar(self.frame)
-        self.func_var.set("Aguardando Unidade...")
-        
-        self.combo_func = tk.OptionMenu(container, self.func_var, "")
-        self.combo_func.config(width=30)
+        self.combo_func = ttk.Combobox(container, width=32, state="readonly")
+        self.combo_func.set("Aguardando Unidade...")
         self.combo_func.grid(row=1, column=1, sticky="w", padx=5, pady=5)
 
         # --- 3. MÊS E ANO ---
@@ -66,10 +60,15 @@ class TelaGerarIndividual:
         tk.Radiobutton(frame_radio, text="Salvar PDF", variable=self.tipo_var, value="envio", bg="#f0f2f5").pack(anchor="w")
 
         # Botões
-        tk.Button(self.frame, text="CONFIRMAR GERAÇÃO", bg="#4CAF50", fg="white", font=("Segoe UI", 10, "bold"),
-                  command=self.gerar, height=2, width=20).pack(pady=20)
+        tk.Button(self.frame, text="CONFIRMAR GERAÇÃO", 
+                  bg="#4CAF50", fg="white", font=("Segoe UI", 10, "bold"),
+                  command=self.gerar, width=25, bd=0, cursor="hand2", 
+                  activebackground="#45a049", activeforeground="white").pack(pady=20, ipady=8)
         
-        tk.Button(self.frame, text="Voltar ao Menu", command=self.voltar).pack(pady=5)
+        tk.Button(self.frame, text="Voltar ao Menu", command=self.voltar,
+                  bg="#6c757d", fg="white", font=("Segoe UI", 10, "bold"),
+                  bd=0, cursor="hand2", activebackground="#5a6268", 
+                  activeforeground="white").pack(pady=5, ipady=4, ipadx=10)
 
     def carregar_dados(self):
         try:
@@ -82,33 +81,26 @@ class TelaGerarIndividual:
             self.unidades = sorted(list(unidades_unicas))
 
             # Popula o combo de Unidades
-            menu = self.combo_unidade["menu"]
-            menu.delete(0, "end")
-            for u in self.unidades:
-                menu.add_command(label=u, command=lambda v=u: self.unidade_var.set(v))
+            self.combo_unidade['values'] = self.unidades
 
         except FileNotFoundError:
             messagebox.showerror("Erro", "Arquivo 'funcionarios.json' não encontrado.")
 
-    def filtrar_funcionarios(self, *args):
+    def filtrar_funcionarios(self, event=None):
         """Chamado automaticamente quando a unidade muda"""
-        unidade_selecionada = self.unidade_var.get()
+        unidade_selecionada = self.combo_unidade.get()
         
         # Filtra a lista principal
         funcs_filtrados = [f for f in self.funcionarios if f.get('unidade', 'Geral') == unidade_selecionada]
         funcs_filtrados.sort(key=lambda x: x['nome']) # Ordena por nome
 
         # Atualiza o combo de funcionários
-        menu = self.combo_func["menu"]
-        menu.delete(0, "end")
-        self.func_var.set("Selecione...")
-        
-        for f in funcs_filtrados:
-            label = f"{f['nome']} ({f.get('matricula', '?')})"
-            menu.add_command(label=label, command=lambda v=label: self.func_var.set(v))
+        lista_display = [f"{f['nome']} ({f.get('matricula', '?')})" for f in funcs_filtrados]
+        self.combo_func['values'] = lista_display
+        self.combo_func.set("Selecione...")
 
     def gerar(self):
-        selecao = self.func_var.get()
+        selecao = self.combo_func.get()
         if not selecao or selecao == "Selecione..." or selecao == "Aguardando Unidade...":
             messagebox.showwarning("Atenção", "Selecione uma Unidade e um Funcionário.")
             return
