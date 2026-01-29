@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
+import json
 from repositorio_usuarios import RepositorioUsuarios
 
 class TelaGestaoUsuarios:
@@ -76,8 +77,9 @@ class TelaGestaoUsuarios:
 
         # Unidade
         tk.Label(frame_form, text="Unidade (Opcional):", bg="#e2e8f0", anchor="w").pack(fill="x")
-        self.entry_unidade = tk.Entry(frame_form)
-        self.entry_unidade.pack(fill="x", pady=(0, 10))
+        self.combo_unidade = ttk.Combobox(frame_form, state="readonly")
+        self.combo_unidade.pack(fill="x", pady=(0, 10))
+        self.carregar_unidades()
 
         # Botão Salvar
         tk.Button(frame_form, text="Salvar Usuário", bg="#22c55e", fg="white",
@@ -103,11 +105,31 @@ class TelaGestaoUsuarios:
             unidade = info.get("unidade", "-")
             self.tree.insert("", "end", values=(login, perfil, unidade))
 
+    def carregar_unidades(self):
+        lista_unidades = set()
+        
+        # 1. Carrega de funcionarios.json (Fonte principal de locais)
+        try:
+            with open("funcionarios.json", "r", encoding="utf-8") as f:
+                funcs = json.load(f)
+                for func in funcs:
+                    if func.get("unidade"):
+                        lista_unidades.add(func["unidade"])
+        except:
+            pass
+
+        # 2. Carrega de usuários já existentes
+        for info in self.repo.buscar_todos().values():
+            if info.get("unidade") and info.get("unidade") != "-":
+                lista_unidades.add(info["unidade"])
+
+        self.combo_unidade['values'] = sorted(list(lista_unidades))
+
     def salvar(self):
         login = self.entry_login.get().strip()
         senha = self.entry_senha.get().strip()
         perfil = self.combo_perfil.get()
-        unidade = self.entry_unidade.get().strip()
+        unidade = self.combo_unidade.get().strip()
 
         if not login or not senha:
             messagebox.showwarning("Atenção", "Login e Senha são obrigatórios.")
@@ -149,5 +171,5 @@ class TelaGestaoUsuarios:
     def limpar_form(self):
         self.entry_login.delete(0, "end")
         self.entry_senha.delete(0, "end")
-        self.entry_unidade.delete(0, "end")
+        self.combo_unidade.set("")
         self.combo_perfil.current(1)
