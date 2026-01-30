@@ -121,6 +121,13 @@ class TelaGerarIndividual:
 
         gerador = GeradorFolhaPonto()
 
+        # --- VALIDAÇÃO ANTECIPADA ---
+        try:
+            gerador.validar_regras_negocio(mes, ano)
+        except ValueError as ve:
+            messagebox.showwarning("Bloqueio de Regra", str(ve))
+            return
+
         # --- JANELA DE CARREGAMENTO ---
         loading_win = tk.Toplevel(self.parent)
         loading_win.title("Processando")
