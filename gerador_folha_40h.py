@@ -1,0 +1,158 @@
+import calendar
+from datetime import datetime, date
+from docx import Document
+from docx.shared import Pt, Cm
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+import holidays
+from gerador_folha import GeradorBase, MESES, DIAS_SEMANA
+
+class GeradorFolha40h(GeradorBase):
+    def gerar(self, funcionario, mes, ano, caminho_saida_pdf, recessos_globais=None):
+        # --- 1. CONFIGURAÇÃO INICIAL ---
+        self.validar_regras_negocio(mes, ano)
+        
+        feriados_br = holidays.BR(subdiv='MG', years=ano)
+        data_corpus = self.calcular_corpus_christi(ano)
+        feriados_br.append({data_corpus: "Corpus Christi"})
+        if recessos_globais is None: recessos_globais = []
+
+        doc = Document()
+        for section in doc.sections:
+            section.top_margin = Cm(0.5); section.bottom_margin = Cm(0.5)
+            section.left_margin = Cm(1.0); section.right_margin = Cm(1.0)
+
+        mes_extenso = MESES[int(mes)]
+
+        # --- 2. CABEÇALHO ---
+        self._inserir_cabecalho(doc)
+        self.add_spacer(doc, pt_size=1)
+
+        # --- 3. DADOS DO FUNCIONÁRIO (LAYOUT 40H) ---
+        table_info = doc.add_table(rows=3, cols=2)
+        table_info.style = 'Table Grid'
+        unidade = funcionario.get('unidade', funcionario.get('lotacao', ''))
+
+        self.celula_texto(table_info.cell(0, 0), f"Nome: {funcionario['nome']}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
+        self.celula_texto(table_info.cell(0, 1), f"Matrícula: {funcionario['matricula']}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
+        
+        self.celula_texto(table_info.cell(1, 0), f"Lotação: {unidade}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
+        self.celula_texto(table_info.cell(1, 1), f"Carga Horária: {funcionario.get('carga_horaria', '40h')}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
+        
+        self.celula_texto(table_info.cell(2, 0), f"Cargo: {funcionario.get('cargo', '')}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
+        self.celula_texto(table_info.cell(2, 1), f"Mês de Referência: {mes_extenso}/{ano}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
+
+        self.add_spacer(doc, pt_size=2)
+
+        # --- 4. TABELA DE PONTO 40H ---
+        # === MODELO 40H (12 Colunas - Padrão) ===
+        table = doc.add_table(rows=0, cols=12)
+        table.style = 'Table Grid'
+        table.autofit = False
+        table.allow_autofit = False
+
+        # Larguras
+        larguras = [
+            1.55, 1.55, 1.55, 1.55, 1.55, 1.55, 
+            1.55, 1.55, 1.55, 1.55, 1.55, 1.55
+        ]
+
+        # Linha 1: Títulos Macro
+        row_h1 = table.add_row()
+        self.definir_altura_linha(row_h1, 0.7)
+        
+        self.celula_texto(row_h1.cells[0], "Dados", size=7)
+        self.celula_texto(row_h1.cells[1], "Primeira Jornada", size=7)
+        row_h1.cells[1].merge(row_h1.cells[4])
+        self.celula_texto(row_h1.cells[5], "Segunda Jornada", size=7)
+        row_h1.cells[5].merge(row_h1.cells[8])
+        self.celula_texto(row_h1.cells[9], "H. Extra", size=7)
+        row_h1.cells[9].merge(row_h1.cells[10])
+        self.celula_texto(row_h1.cells[11], "Visto/Obs", size=7)
+
+        # Linha 2: Subtítulos
+        row_h2 = table.add_row()
+        self.definir_altura_linha(row_h2, 0.5)
+        
+        cols_titulos = [
+            "Dia/Sem", "Entr", "Rub", "Saída", "Rub", 
+            "Entr", "Rub", "Saída", "Rub", 
+            "Entr", "Saída", "Assinatura"
+        ]
+        
+        for i, tit in enumerate(cols_titulos):
+            self.celula_texto(row_h2.cells[i], tit, bold=True, size=6)
+            row_h2.cells[i].width = Cm(larguras[i])
+
+        self._preencher_dias(table, larguras, mes, ano, feriados_br, recessos_globais, funcionario)
+
+        # --- 5. RODAPÉ ---
+        self.add_spacer(doc, pt_size=5)
+        p = doc.add_paragraph("Reconheço a exatidão destas anotações:")
+        p.style.font.size = Pt(8)
+        p.paragraph_format.space_after = Pt(9)
+
+        table_ass = doc.add_table(rows=1, cols=3)
+        self.celula_texto(table_ass.cell(0, 0), "_____________________________\nAssinatura Empregado", size=8)
+        self.celula_texto(table_ass.cell(0, 1), "Data: ______/______/______", size=8)
+        self.celula_texto(table_ass.cell(0, 2), "_____________________________\nAssinatura Chefia", size=8)
+
+        self._salvar_pdf(doc, caminho_saida_pdf)
+
+    def _preencher_dias(self, table, larguras, mes, ano, feriados_br, recessos_globais, funcionario):
+        _, num_dias = calendar.monthrange(ano, mes)
+        lista_ferias = funcionario.get('ferias', [])
+
+        def verificar_ferias(data_obj, lista_f):
+            if not lista_f: return None
+            for p in lista_f:
+                try:
+                    ini = datetime.strptime(p['inicio'], "%Y-%m-%d").date()
+                    fim = datetime.strptime(p['fim'], "%Y-%m-%d").date()
+                    if ini <= data_obj <= fim:
+                        return p.get('tipo', 'FÉRIAS').upper()
+                except: continue
+            return None
+
+        for dia in range(1, num_dias + 1):
+            data = date(ano, mes, dia)
+            idx_sem = data.weekday()
+            nome_sem = DIAS_SEMANA[idx_sem]
+            feriado = self.obter_nome_feriado(data, feriados_br)
+            motivo_afastamento = verificar_ferias(data, lista_ferias)
+            eh_recesso = data.strftime("%Y-%m-%d") in recessos_globais
+
+            row = table.add_row()
+            self.definir_altura_linha(row, 0.61) 
+
+            for i, w in enumerate(larguras):
+                row.cells[i].width = Cm(w)
+
+            texto_dia_sem = f"{dia:02d} - {nome_sem}"
+            self.celula_texto(row.cells[0], texto_dia_sem, size=8)
+
+            bloquear = False
+            texto_bloqueio = ""
+
+            if motivo_afastamento:
+                bloquear = True
+                texto_bloqueio = motivo_afastamento
+            else:
+                # Lógica 40h (Normal)
+                if eh_recesso:
+                    bloquear = True
+                    texto_bloqueio = "RECESSO"
+                elif feriado:
+                    bloquear = True
+                    texto_bloqueio = f"FERIADO - {feriado.upper()}"
+                elif idx_sem == 5: # Sábado
+                    bloquear = True
+                elif idx_sem == 6: # Domingo
+                    bloquear = True
+
+            if bloquear:
+                for cell in row.cells:
+                    self.aplicar_fundo_cinza(cell)
+                cell_inicio = row.cells[1]
+                cell_fim = row.cells[-1]
+                cell_inicio.merge(cell_fim)
+                self.celula_texto(cell_inicio, texto_bloqueio, bold=True, size=7)

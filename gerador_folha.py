@@ -18,17 +18,15 @@ MESES = {
 
 DIAS_SEMANA = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"]
 
-class GeradorFolhaPonto:
+class GeradorBase:
+    """Classe base com funcionalidades comuns a todas as folhas"""
     def __init__(self):
-        # OBS: O código atual desenha a folha do zero, ignorando a "Regra de Ouro" de usar template.
-        # O parâmetro modelo_path foi removido pois não era utilizado.
         pasta_script = os.path.dirname(os.path.abspath(__file__))
         self.pasta_modelos = os.path.join(pasta_script, "modelos")
         self.logo_path = os.path.join(self.pasta_modelos, "logo.png")
         self.cabecalho_img_path = os.path.join(self.pasta_modelos, "cabecalho.png")
 
     def validar_regras_negocio(self, mes_alvo, ano_alvo):
-        """Aplica as travas de datas solicitadas"""
         hoje = date.today()
         data_alvo = date(ano_alvo, mes_alvo, 1)
         data_atual_base = date(hoje.year, hoje.month, 1)
@@ -101,167 +99,7 @@ class GeradorFolhaPonto:
         shading_elm = parse_xml(r'<w:shd {} w:fill="D9D9D9"/>'.format(nsdecls('w')))
         cell._tc.get_or_add_tcPr().append(shading_elm)
 
-    def gerar(self, funcionario, mes, ano, caminho_saida_pdf):
-        # --- 0. VALIDAÇÃO ---
-        try:
-            self.validar_regras_negocio(mes, ano)
-        except ValueError as e:
-            raise e
-
-        # --- PREPARAÇÃO DE FERIADOS ---
-        feriados_br = holidays.BR(subdiv='MG', years=ano)
-        data_corpus = self.calcular_corpus_christi(ano)
-        feriados_br.append({data_corpus: "Corpus Christi"})
-
-        doc = Document()
-        
-        # Margens Estreitas (Economia de espaço vertical)
-        for section in doc.sections:
-            section.top_margin = Cm(0.5)
-            section.bottom_margin = Cm(0.5)
-            section.left_margin = Cm(1.0)
-            section.right_margin = Cm(1.0)
-
-        mes_extenso = MESES[int(mes)]
-
-        # --- 1. CABEÇALHO ---
-        self._inserir_cabecalho(doc)
-
-        # Espaçador reduzido
-        self.add_spacer(doc, pt_size=1)
-
-        # --- 2. DADOS DO FUNCIONÁRIO ---
-        table_info = doc.add_table(rows=3, cols=2)
-        table_info.style = 'Table Grid'
-        
-        unidade = funcionario.get('unidade', funcionario.get('lotacao', ''))
-
-        self.celula_texto(table_info.cell(0, 0), f"Nome: {funcionario['nome']}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
-        self.celula_texto(table_info.cell(0, 1), f"Matrícula: {funcionario['matricula']}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
-        
-        cell_lotacao = table_info.cell(1, 0)
-        cell_lotacao.merge(table_info.cell(1, 1))
-        self.celula_texto(cell_lotacao, f"Lotação: {unidade}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
-        
-        self.celula_texto(table_info.cell(2, 0), f"Cargo: {funcionario.get('cargo', '')}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
-        self.celula_texto(table_info.cell(2, 1), f"Mês de Referência: {mes_extenso}/{ano}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
-
-        # Espaçador reduzido
-        self.add_spacer(doc, pt_size=2)
-
-        # --- 3. TABELA DE PONTO (12 COLUNAS) ---
-        table = doc.add_table(rows=0, cols=12)
-        table.style = 'Table Grid'
-        table.autofit = False
-        table.allow_autofit = False
-
-        # Larguras
-        larguras = [
-            1.55, 1.55, 1.55, 1.55, 1.55, 1.55, 
-            1.55, 1.55, 1.55, 1.55, 1.55, 1.55
-        ]
-
-        # Linha 1: Títulos Macro
-        row_h1 = table.add_row()
-        self.definir_altura_linha(row_h1, 0.7) # Reduzi levemente header
-        
-        self.celula_texto(row_h1.cells[0], "Dados", size=7)
-        self.celula_texto(row_h1.cells[1], "Primeira Jornada", size=7)
-        row_h1.cells[1].merge(row_h1.cells[4])
-        self.celula_texto(row_h1.cells[5], "Segunda Jornada", size=7)
-        row_h1.cells[5].merge(row_h1.cells[8])
-        self.celula_texto(row_h1.cells[9], "H. Extra", size=7)
-        row_h1.cells[9].merge(row_h1.cells[10])
-        self.celula_texto(row_h1.cells[11], "Visto/Obs", size=7)
-
-        # Linha 2: Subtítulos
-        row_h2 = table.add_row()
-        self.definir_altura_linha(row_h2, 0.5)
-        
-        cols_titulos = [
-            "Dia/Sem", "Entr", "Rub", "Saída", "Rub", 
-            "Entr", "Rub", "Saída", "Rub", 
-            "Entr", "Saída", "Assinatura"
-        ]
-        
-        for i, tit in enumerate(cols_titulos):
-            self.celula_texto(row_h2.cells[i], tit, bold=True, size=6)
-            row_h2.cells[i].width = Cm(larguras[i])
-
-        # --- 4. PREENCHIMENTO DOS DIAS ---
-        _, num_dias = calendar.monthrange(ano, mes)
-        
-        lista_ferias = funcionario.get('ferias', [])
-
-        def verificar_ferias(data_obj, lista_f):
-            if not lista_f:
-                return False
-            for p in lista_f:
-                try:
-                    ini = datetime.strptime(p['inicio'], "%Y-%m-%d").date()
-                    fim = datetime.strptime(p['fim'], "%Y-%m-%d").date()
-                    if ini <= data_obj <= fim:
-                        return True
-                except:
-                    continue
-            return False
-
-        for dia in range(1, num_dias + 1):
-            data = date(ano, mes, dia)
-            idx_sem = data.weekday()
-            nome_sem = DIAS_SEMANA[idx_sem]
-            feriado = self.obter_nome_feriado(data, feriados_br)
-            em_ferias = verificar_ferias(data, lista_ferias)
-
-            row = table.add_row()
-            # --- AJUSTE DE ALTURA PARA CABER NA FOLHA ---
-            self.definir_altura_linha(row, 0.61) 
-
-            for i, w in enumerate(larguras):
-                row.cells[i].width = Cm(w)
-
-            texto_dia_sem = f"{dia:02d} - {nome_sem}"
-            self.celula_texto(row.cells[0], texto_dia_sem, size=8)
-
-            bloquear = False
-            texto_bloqueio = ""
-
-            if em_ferias:
-                bloquear = True
-                texto_bloqueio = "FÉRIAS"
-            elif feriado:
-                bloquear = True
-                texto_bloqueio = f"FERIADO - {feriado.upper()}"
-            elif idx_sem == 5: 
-                bloquear = True
-                texto_bloqueio = "SÁBADO"
-            elif idx_sem == 6: 
-                bloquear = True
-                texto_bloqueio = "DOMINGO"
-
-            if bloquear:
-                for cell in row.cells:
-                    self.aplicar_fundo_cinza(cell)
-                
-                cell_inicio = row.cells[1]
-                cell_fim = row.cells[11]
-                cell_inicio.merge(cell_fim)
-                self.celula_texto(cell_inicio, texto_bloqueio, bold=True, size=7)
-
-        # Espaçador ajustado para equilibrar com o afastamento das assinaturas
-        self.add_spacer(doc, pt_size=5)
-
-        # --- 5. RODAPÉ ---
-        p = doc.add_paragraph("Reconheço a exatidão destas anotações:")
-        p.style.font.size = Pt(8)
-        p.paragraph_format.space_after = Pt(16)
-        p.paragraph_format.space_after = Pt(9)
-
-        table_ass = doc.add_table(rows=1, cols=3)
-        self.celula_texto(table_ass.cell(0, 0), "_____________________________\nAssinatura Empregado", size=8)
-        self.celula_texto(table_ass.cell(0, 1), "Data: ______/______/______", size=8)
-        self.celula_texto(table_ass.cell(0, 2), "_____________________________\nAssinatura Chefia", size=8)
-
+    def _salvar_pdf(self, doc, caminho_saida_pdf):
         # --- SALVAR ---
         docx_temp = caminho_saida_pdf.replace(".pdf", ".docx")
         
@@ -378,3 +216,27 @@ class GeradorFolhaPonto:
                 run.font.bold = bold
                 run.font.size = Pt(size)
             cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+
+class GeradorFolhaPonto:
+    """Classe Fachada (Facade) para manter compatibilidade com o restante do sistema"""
+    def validar_regras_negocio(self, mes, ano):
+        GeradorBase().validar_regras_negocio(mes, ano)
+
+    def gerar(self, funcionario, mes, ano, caminho_saida_pdf, recessos_globais=None):
+        # Importação local para evitar ciclo, já que as classes filhas importam GeradorBase deste arquivo
+        from gerador_folha_30h import GeradorFolha30h
+        from gerador_folha_40h import GeradorFolha40h
+        from gerador_folha_12x36 import GeradorFolha12x36
+
+        escala = funcionario.get('escala', 'NORMAL')
+        carga = funcionario.get('carga_horaria', '40h')
+        
+        if escala == '12X36':
+            gerador = GeradorFolha12x36()
+        elif carga == '30h':
+            gerador = GeradorFolha30h()
+        else:
+            gerador = GeradorFolha40h()
+        
+        gerador.gerar(funcionario, mes, ano, caminho_saida_pdf, recessos_globais)

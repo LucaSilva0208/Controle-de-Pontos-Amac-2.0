@@ -3,6 +3,9 @@ from tkinter import messagebox
 from tela_gerar_individual import TelaGerarIndividual
 from tela_gerar_lote import TelaGerarLote
 from tela_gestao_usuarios import TelaGestaoUsuarios
+from tela_lancamento_ferias import TelaLancamentoFerias
+from tela_gestao_funcionarios import TelaGestaoFuncionarios
+from repositorio_dados import RepositorioDados
 
 class TelaPrincipal:
     def __init__(self, root, dados_usuario):
@@ -63,6 +66,8 @@ class TelaPrincipal:
         # --- BOTÕES FUNCIONAIS ---
         self.btn_individual = self.criar_botao("Gerar Folha Individual", self.abrir_individual)
         self.btn_lote = self.criar_botao("Gerar em Lote", self.abrir_lote)
+        self.criar_botao("👥 Gestão de Funcionários", self.abrir_gestao_funcionarios)
+        self.criar_botao("🏥 Lançar Ausências", self.abrir_lancamento_ausencias)
 
         # --- LÓGICA DE ADMIN ---
         # Só mostra o botão se o perfil for 'admin'
@@ -150,6 +155,12 @@ class TelaPrincipal:
 
     def abrir_gestao_usuarios(self):
         TelaGestaoUsuarios(self.area, self.mostrar_home)
+
+    def abrir_lancamento_ausencias(self):
+        TelaLancamentoFerias(self.area, self.mostrar_home, titulo="Lançamento de Ausências")
+
+    def abrir_gestao_funcionarios(self):
+        TelaGestaoFuncionarios(self.area, self.mostrar_home)
 
     # --- LÓGICA DE LOGOUT AUTOMÁTICO ---
     def iniciar_monitoramento_inatividade(self):
