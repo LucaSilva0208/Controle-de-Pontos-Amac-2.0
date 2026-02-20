@@ -3,7 +3,7 @@ import os
 try:
     import openpyxl
 except ImportError:
-    openpyxl = None # Tratamento se a lib não estiver instalada
+    openpyxl = None
 
 # Arquivos
 ARQUIVO_USUARIOS = "usuarios_sistema.json"
@@ -123,10 +123,7 @@ class RepositorioDados:
     
     def listar_todos_funcionarios(self):
         """Lê do Excel funcionarios_sede.xlsx"""
-        if not openpyxl:
-            print("ERRO: Biblioteca openpyxl não instalada.")
-            return []
-
+        if not openpyxl: return []
         lista = []
         
         # Itera sobre todos os arquivos definidos na lista
@@ -160,14 +157,35 @@ class RepositorioDados:
                     sheet_lower = sheet_name.lower()
                     if "30" in sheet_lower or "prefeitura" in sheet_lower:
                         carga_aba = "30h"
+                    elif "40" in sheet_lower:
+                        carga_aba = "40h"
 
                     # Definição de colunas (Layout Padrão vs Prefeitura)
-                    # Padrão: B(1)=Matrícula, C(2)=Nome, E(4)=Cargo
-                    idx_mat, idx_nome, idx_cargo = 1, 2, 4
+                    # Padrão: B(1)=Matrícula, C(2)=Nome, D(3)=Unidade, E(4)=Cargo
+                    idx_mat, idx_nome, idx_unidade, idx_cargo = 1, 2, 3, 4
                     
                     # Layout Prefeitura (Deslocado): A(0)=Matrícula, B(1)=Nome, C(2)=Cargo
                     if "prefeitura" in sheet_lower:
                         idx_mat, idx_nome, idx_cargo = 0, 1, 2
+                        idx_unidade = -1 # Não tenta ler unidade se não soubermos onde está neste layout
+                    elif unidade_macro == "PGPL":
+                        # Layout PGPL (Ajuste): A(0)=Matrícula, B(1)=Nome, C(2)=Unidade, D(3)=Cargo
+                        idx_mat, idx_nome, idx_unidade, idx_cargo = 0, 1, 2, 3
+
+                    # --- VARREDURA DE COLUNAS DE HORÁRIO (Busca Inteligente) ---
+                    # Lê a primeira linha para mapear nomes -> índices
+                    headers = [str(c.value).strip().lower() if c.value else "" for c in ws[1]]
+                    
+                    def encontrar_coluna(termos):
+                        for i, h in enumerate(headers):
+                            for t in termos:
+                                if t in h: return i
+                        return -1
+
+                    idx_ent1 = encontrar_coluna(["ent. 1", "entrada 1", "ent 1", "1ª ent", "ent1"])
+                    idx_sai1 = encontrar_coluna(["saída 1", "saida 1", "sai 1", "1ª sai", "sai1"])
+                    idx_ent2 = encontrar_coluna(["ent. 2", "entrada 2", "ent 2", "2ª ent", "ent2"])
+                    idx_sai2 = encontrar_coluna(["saída 2", "saida 2", "sai 2", "2ª sai", "sai2"])
 
                     # Pula o cabeçalho (min_row=2)
                     for row in ws.iter_rows(min_row=2, values_only=True):
@@ -175,6 +193,10 @@ class RepositorioDados:
                         if len(row) > idx_nome and row[idx_nome] and row[idx_mat]: 
                             nome = str(row[idx_nome])
                             matricula = str(row[idx_mat])
+                            
+                            # Ignora linhas que sejam repetição de cabeçalho
+                            if nome.strip().lower() == "nome" or matricula.strip().lower() == "matrícula":
+                                continue
                             
                             cargo = ""
                             if len(row) > idx_cargo and row[idx_cargo]:
@@ -191,13 +213,31 @@ class RepositorioDados:
                             if "lic. sem vencimento" in texto_verificacao or "afastado" in texto_verificacao:
                                 status = "Afastado"
 
+                            # Lógica de Unidade (Lotação)
+                            # Prioridade: O que está na célula do Excel > Unidade Macro do Arquivo
+                            unidade_final = unidade_macro
+                            if idx_unidade != -1 and len(row) > idx_unidade:
+                                val_unidade = row[idx_unidade]
+                                if val_unidade and str(val_unidade).strip():
+                                    u_temp = str(val_unidade).strip()
+                                    if u_temp.lower() != "lotação":
+                                        unidade_final = u_temp
+
+                            # Leitura dos Horários (Baseado na varredura)
+                            ent1 = str(row[idx_ent1]) if idx_ent1 != -1 and len(row) > idx_ent1 and row[idx_ent1] else ""
+                            sai1 = str(row[idx_sai1]) if idx_sai1 != -1 and len(row) > idx_sai1 and row[idx_sai1] else ""
+                            ent2 = str(row[idx_ent2]) if idx_ent2 != -1 and len(row) > idx_ent2 and row[idx_ent2] else ""
+                            sai2 = str(row[idx_sai2]) if idx_sai2 != -1 and len(row) > idx_sai2 and row[idx_sai2] else ""
+
                             lista.append({
                                 "nome": nome,
                                 "matricula": matricula,
                                 "cargo": cargo,
-                                "unidade": unidade_macro, # Força Sede ou PGPL
+                                "unidade": unidade_final,
                                 "escala": escala_final, 
                                 "carga_horaria": carga_aba,
+                                "horario_ent1": ent1, "horario_sai1": sai1,
+                                "horario_ent2": ent2, "horario_sai2": sai2,
                                 "status": status
                             })
             except Exception as e:
@@ -205,10 +245,9 @@ class RepositorioDados:
         
         return lista
 
-    def adicionar_funcionario(self, nome, matricula, cargo, escala, carga_horaria="40h"):
+    def adicionar_funcionario(self, nome, matricula, cargo, escala, carga_horaria="40h", ent1="", sai1="", ent2="", sai2=""):
         """Adiciona nova linha no Excel Principal (o primeiro da lista)"""
-        if not openpyxl: return False, "Instale openpyxl"
-        
+        if not openpyxl: return False, "Biblioteca openpyxl não instalada."
         try:
             # Por padrão, adiciona novos funcionários no primeiro arquivo da lista
             arquivo_alvo = ARQUIVOS_EXCEL[0]
@@ -216,18 +255,17 @@ class RepositorioDados:
             ws = wb.active
             
             # Adiciona seguindo o padrão detectado:
-            # [Vazio, Matrícula, Nome, Unidade(Sede), Cargo, Escala, Carga]
-            ws.append([None, matricula, nome, "Sede", cargo, escala, carga_horaria])
+            # [Vazio, Matrícula, Nome, Unidade(Sede), Cargo, Escala, Carga, Ent1, Sai1, Ent2, Sai2]
+            ws.append([None, matricula, nome, "Sede", cargo, escala, carga_horaria, ent1, sai1, ent2, sai2])
             
             wb.save(arquivo_alvo)
             return True, "Funcionário cadastrado com sucesso!"
         except Exception as e:
             return False, f"Erro ao salvar no Excel: {e}"
 
-    def editar_funcionario(self, matricula_original, nome, matricula, cargo, escala, carga_horaria):
+    def editar_funcionario(self, matricula_original, nome, matricula, cargo, escala, carga_horaria, ent1, sai1, ent2, sai2):
         """Edita funcionário procurando em TODOS os arquivos Excel"""
-        if not openpyxl: return False, "Instale openpyxl"
-        
+        if not openpyxl: return False, "Biblioteca openpyxl não instalada."
         for arquivo in ARQUIVOS_EXCEL:
             if not os.path.exists(arquivo): continue
             
@@ -245,6 +283,11 @@ class RepositorioDados:
                             row[2].value = nome
                             # row[3] Unidade mantém
                             if len(row) > 4: row[4].value = cargo
+                            # Atualiza ou cria as células de horário
+                            if len(row) > 7: row[7].value = ent1
+                            if len(row) > 8: row[8].value = sai1
+                            if len(row) > 9: row[9].value = ent2
+                            if len(row) > 10: row[10].value = sai2
                             
                             found = True
                             break
@@ -260,8 +303,7 @@ class RepositorioDados:
 
     def excluir_funcionario(self, matricula):
         """Remove a linha do funcionário procurando em TODOS os arquivos"""
-        if not openpyxl: return False, "Instale openpyxl"
-        
+        if not openpyxl: return False, "Biblioteca openpyxl não instalada."
         for arquivo in ARQUIVOS_EXCEL:
             if not os.path.exists(arquivo): continue
             

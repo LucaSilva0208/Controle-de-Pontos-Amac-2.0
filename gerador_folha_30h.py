@@ -36,11 +36,37 @@ class GeradorFolha30h(GeradorBase):
         self.celula_texto(table_info.cell(0, 0), f"Nome: {funcionario['nome']}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
         self.celula_texto(table_info.cell(0, 1), f"Matrícula: {funcionario['matricula']}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
         
+        # Mescla a célula de lotação para ocupar a linha toda, já que removemos a Carga Horária
+        table_info.cell(1, 0).merge(table_info.cell(1, 1))
         self.celula_texto(table_info.cell(1, 0), f"Lotação: {unidade}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
-        self.celula_texto(table_info.cell(1, 1), "Carga Horária: 30h (Intervalo: 15min)", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
         
+        # Linha 3: Cargo (Ocupando toda a linha agora, sem data ao lado)
+        table_info.cell(2, 0).merge(table_info.cell(2, 1))
         self.celula_texto(table_info.cell(2, 0), f"Cargo: {funcionario.get('cargo', '')}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
-        self.celula_texto(table_info.cell(2, 1), f"Mês de Referência: {mes_extenso}/{ano}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
+        
+        self.add_spacer(doc, pt_size=2)
+
+        # --- NOVA TABELA DE HORÁRIOS E DATA ---
+        table_horario = doc.add_table(rows=2, cols=6)
+        table_horario.style = 'Table Grid'
+        
+        # Larguras ajustadas para totalizar 19.8cm
+        larguras_h = [2.65, 2.65, 2.65, 2.65, 5.3, 3.7]
+        for row in table_horario.rows:
+            for i, w in enumerate(larguras_h):
+                row.cells[i].width = Cm(w)
+        
+        # Linha 1: Cabeçalhos
+        r1 = table_horario.rows[0]
+        r1.cells[0].merge(r1.cells[1]); self.celula_texto(r1.cells[0], "Primeira Jornada", bold=True, size=8)
+        r1.cells[2].merge(r1.cells[3]); self.celula_texto(r1.cells[2], "Segunda Jornada", bold=True, size=8)
+        self.celula_texto(r1.cells[4], "Mês de Referência", bold=True, size=8)
+        self.celula_texto(r1.cells[5], "Ano", bold=True, size=8)
+
+        # Linha 2: Dados Puros
+        r2 = table_horario.rows[1]
+        vals = [funcionario.get('horario_ent1',''), funcionario.get('horario_sai1',''), funcionario.get('horario_ent2',''), funcionario.get('horario_sai2',''), mes_extenso, str(ano)]
+        for i, val in enumerate(vals): self.celula_texto(r2.cells[i], val, size=9)
 
         self.add_spacer(doc, pt_size=2)
 
@@ -53,7 +79,7 @@ class GeradorFolha30h(GeradorBase):
         
         # AQUI ESTÃO AS MEDIDAS (Total ~15.4cm)
         # Dia(1.5) Ent(1.5) Rub(0.8) Sai(1.5) Rub(0.8) Int(1.5) Rub(0.8) HE(1.5) HE(1.5) Ass(4.0)
-        larguras = [1.9, 1.9, 1.9, 1.9, 1.9, 1.9, 1.9, 1.9, 1.9, 1.9]
+        larguras = [1.9, 1.8, 2.0, 1.8, 2.0, 1.9, 1.9, 1.9, 1.9, 1.9]
         
         # Header 1
         row_h1 = table.add_row()

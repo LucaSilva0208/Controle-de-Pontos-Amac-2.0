@@ -137,7 +137,7 @@ class GeradorBase:
         """
         if os.path.exists(self.cabecalho_img_path):
             try:
-                doc.add_picture(self.cabecalho_img_path, width=Cm(19.9))
+                doc.add_picture(self.cabecalho_img_path, width=Cm(19.8))
                 # Ajuste: Centralizar e remover espaçamento padrão do parágrafo da imagem
                 last_p = doc.paragraphs[-1]
                 last_p.alignment = WD_ALIGN_PARAGRAPH.CENTER

@@ -30,10 +30,40 @@ class GeradorFolha12x36(GeradorBase):
 
         self.celula_texto(table_info.cell(0, 0), f"Nome: {funcionario['nome']}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
         self.celula_texto(table_info.cell(0, 1), f"Matrícula: {funcionario['matricula']}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
+        # Mescla a célula de lotação para ocupar a linha toda
+        table_info.cell(1, 0).merge(table_info.cell(1, 1))
         self.celula_texto(table_info.cell(1, 0), f"Lotação: {unidade}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
-        self.celula_texto(table_info.cell(1, 1), f"Carga Horária: {funcionario.get('carga_horaria', '40h')} (Escala 12x36)", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
         self.celula_texto(table_info.cell(2, 0), f"Cargo: {funcionario.get('cargo', '')}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
-        self.celula_texto(table_info.cell(2, 1), f"Mês de Referência: {mes_extenso}/{ano}", align=WD_ALIGN_PARAGRAPH.LEFT, size=9)
+        
+        self.add_spacer(doc, pt_size=2)
+
+        # --- NOVA TABELA DE HORÁRIOS E DATA ---
+        table_horario = doc.add_table(rows=2, cols=6)
+        table_horario.style = 'Table Grid'
+        
+        # Larguras ajustadas para totalizar 19.8cm
+        larguras_h = [2.65, 2.65, 2.65, 2.65, 5.3, 3.7]
+        for row in table_horario.rows:
+            for i, w in enumerate(larguras_h):
+                row.cells[i].width = Cm(w)
+        
+        # Linha 1: Cabeçalhos
+        r1 = table_horario.rows[0]
+        r1.cells[0].merge(r1.cells[1]); self.celula_texto(r1.cells[0], "Primeira Jornada", bold=True, size=8)
+        r1.cells[2].merge(r1.cells[3]); self.celula_texto(r1.cells[2], "Segunda Jornada", bold=True, size=8)
+        self.celula_texto(r1.cells[4], "Mês de Referência", bold=True, size=8)
+        self.celula_texto(r1.cells[5], "Ano", bold=True, size=8)
+
+        # Linha 2: Dados Puros
+        r2 = table_horario.rows[1]
+        
+        def fmt_hora(h):
+            s = str(h) if h else ""
+            # Se o texto for longo (ex: 07:00:00), pega apenas os 5 primeiros caracteres (07:00)
+            return s[:5] if len(s) >= 8 and ":" in s else s
+
+        vals = [fmt_hora(funcionario.get('horario_ent1','')), fmt_hora(funcionario.get('horario_sai1','')), fmt_hora(funcionario.get('horario_ent2','')), fmt_hora(funcionario.get('horario_sai2','')), mes_extenso, str(ano)]
+        for i, val in enumerate(vals): self.celula_texto(r2.cells[i], val, size=9)
 
         self.add_spacer(doc, pt_size=2)
 

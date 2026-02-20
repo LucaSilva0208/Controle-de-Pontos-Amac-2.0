@@ -133,10 +133,16 @@ class TelaGerarIndividual:
         func_obj = next((f for f in self.funcionarios if f["nome"] == nome_selecionado), None)
         
         if func_obj:
+            cargo = func_obj.get('cargo', '').lower()
+            
             if func_obj.get('escala') == '12X36':
                 self.var_carga.set("12x36")
             else:
-                self.var_carga.set(func_obj.get('carga_horaria', '40h'))
+                carga = func_obj.get('carga_horaria', '40h')
+                if carga == '30h':
+                    self.var_carga.set("30h")
+                else:
+                    self.var_carga.set("40h")
 
     def filtrar_por_letra(self, event):
         # Ignora teclas de navegação para manter o uso normal das setas

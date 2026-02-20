@@ -91,6 +91,30 @@ class TelaGestaoFuncionarios:
         self.combo_carga.set("40h")
         self.combo_carga.pack(fill="x", pady=(0, 10))
 
+        # --- NOVOS CAMPOS DE HORÁRIO (Conforme solicitado) ---
+        frame_horarios = tk.Frame(frame_form, bg="#e2e8f0")
+        frame_horarios.pack(fill="x", pady=(0, 10))
+        
+        # Linha 1: Jornada 1
+        f_h1 = tk.Frame(frame_horarios, bg="#e2e8f0"); f_h1.pack(fill="x", pady=2)
+        tk.Label(f_h1, text="1ª Jornada:", bg="#e2e8f0", width=10, anchor="w").pack(side="left")
+        
+        tk.Label(f_h1, text="Entrada:", bg="#e2e8f0", font=("Segoe UI", 8)).pack(side="left", padx=(2, 0))
+        self.entry_ent1 = tk.Entry(f_h1, width=6); self.entry_ent1.pack(side="left", padx=2)
+        
+        tk.Label(f_h1, text="Saída:", bg="#e2e8f0", font=("Segoe UI", 8)).pack(side="left", padx=(5, 0))
+        self.entry_sai1 = tk.Entry(f_h1, width=6); self.entry_sai1.pack(side="left", padx=2)
+
+        # Linha 2: Jornada 2
+        f_h2 = tk.Frame(frame_horarios, bg="#e2e8f0"); f_h2.pack(fill="x", pady=2)
+        tk.Label(f_h2, text="2ª Jornada:", bg="#e2e8f0", width=10, anchor="w").pack(side="left")
+        
+        tk.Label(f_h2, text="Entrada:", bg="#e2e8f0", font=("Segoe UI", 8)).pack(side="left", padx=(2, 0))
+        self.entry_ent2 = tk.Entry(f_h2, width=6); self.entry_ent2.pack(side="left", padx=2)
+        
+        tk.Label(f_h2, text="Saída:", bg="#e2e8f0", font=("Segoe UI", 8)).pack(side="left", padx=(5, 0))
+        self.entry_sai2 = tk.Entry(f_h2, width=6); self.entry_sai2.pack(side="left", padx=2)
+
         # Botões Ação
         self.btn_salvar = tk.Button(frame_form, text="💾 Salvar", bg="#22c55e", fg="white",
                   font=("Segoe UI", 10, "bold"), command=self.salvar,
@@ -112,7 +136,10 @@ class TelaGestaoFuncionarios:
         
         funcionarios = self.repo.listar_todos_funcionarios()
         for f in funcionarios:
-            self.tree.insert("", "end", values=(f['nome'], f['matricula'], f['cargo'], f.get('escala', 'NORMAL'), f.get('carga_horaria', '40h')))
+            # Armazena os horários ocultos nos values para recuperar na edição
+            # values: 0=Nome, 1=Mat, 2=Cargo, 3=Escala, 4=Carga, 5=Ent1, 6=Sai1, 7=Ent2, 8=Sai2
+            self.tree.insert("", "end", values=(f['nome'], f['matricula'], f['cargo'], f.get('escala', 'NORMAL'), f.get('carga_horaria', '40h'),
+                                                f.get('horario_ent1',''), f.get('horario_sai1',''), f.get('horario_ent2',''), f.get('horario_sai2','')))
 
     def ao_selecionar(self, event):
         selecionado = self.tree.selection()
@@ -128,6 +155,13 @@ class TelaGestaoFuncionarios:
         if len(vals) > 4:
             self.combo_carga.set(vals[4])
         
+        # Preenche horários (se existirem na tupla values)
+        if len(vals) > 8:
+            self.entry_ent1.delete(0, "end"); self.entry_ent1.insert(0, vals[5])
+            self.entry_sai1.delete(0, "end"); self.entry_sai1.insert(0, vals[6])
+            self.entry_ent2.delete(0, "end"); self.entry_ent2.insert(0, vals[7])
+            self.entry_sai2.delete(0, "end"); self.entry_sai2.insert(0, vals[8])
+
         self.matricula_em_edicao = str(vals[1])
         self.lbl_form.config(text="Editando Funcionário")
         self.btn_salvar.config(text="🔄 Atualizar")
@@ -138,6 +172,10 @@ class TelaGestaoFuncionarios:
         self.entry_cargo.delete(0, "end")
         self.combo_escala.set("NORMAL")
         self.combo_carga.set("40h")
+        self.entry_ent1.delete(0, "end")
+        self.entry_sai1.delete(0, "end")
+        self.entry_ent2.delete(0, "end")
+        self.entry_sai2.delete(0, "end")
         self.matricula_em_edicao = None
         self.lbl_form.config(text="Novo Funcionário")
         self.btn_salvar.config(text="💾 Salvar")
@@ -146,12 +184,13 @@ class TelaGestaoFuncionarios:
     def salvar(self):
         nome, mat, cargo = self.entry_nome.get(), self.entry_matricula.get(), self.entry_cargo.get()
         escala, carga = self.combo_escala.get(), self.combo_carga.get()
+        e1, s1, e2, s2 = self.entry_ent1.get(), self.entry_sai1.get(), self.entry_ent2.get(), self.entry_sai2.get()
         if not nome or not mat: return messagebox.showwarning("Atenção", "Nome e Matrícula obrigatórios.")
 
         if self.matricula_em_edicao:
-            ok, msg = self.repo.editar_funcionario(self.matricula_em_edicao, nome, mat, cargo, escala, carga)
+            ok, msg = self.repo.editar_funcionario(self.matricula_em_edicao, nome, mat, cargo, escala, carga, e1, s1, e2, s2)
         else:
-            ok, msg = self.repo.adicionar_funcionario(nome, mat, cargo, escala, carga)
+            ok, msg = self.repo.adicionar_funcionario(nome, mat, cargo, escala, carga, e1, s1, e2, s2)
 
         if ok: messagebox.showinfo("Sucesso", msg); self.limpar_form(); self.listar_funcionarios()
         else: messagebox.showerror("Erro", msg)
